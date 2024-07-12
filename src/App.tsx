@@ -6,7 +6,7 @@ import {
   Navigate,
 } from "react-router-dom";
 import HomePage from "./pages/HomePage";
-import MainPage from "./pages/MainPage";
+import MainPage from "./pages/rooms/MainPage";
 import PeoplePage from "./pages/PeoplePage";
 import MyPage from "./pages/MyPage";
 
@@ -15,10 +15,10 @@ const App: React.FC = () => {
     <Router>
       <Routes>
         <Route path="/" element={<HomePage />}>
-          <Route index element={<Navigate to="/tab1" />} />
-          <Route path="tab1" element={<MainPage />} />
-          <Route path="tab2" element={<PeoplePage />} />
-          <Route path="tab3" element={<MyPage />} />
+          <Route index element={<Navigate to="/main" />} />
+          <Route path="main" element={<MainPage />} />
+          <Route path="people" element={<PeoplePage />} />
+          <Route path="mypage" element={<MyPage />} />
         </Route>
       </Routes>
     </Router>

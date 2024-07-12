@@ -1,26 +1,16 @@
 import React from "react";
-import styled from "styled-components";
 
-const RoomListContainer = styled.div`
-  background-color: #ffffff;
-  padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-  max-width: 400px;
-`;
-
-const RoomListItem = styled.div`
-  cursor: pointer;
-  padding: 10px;
-  margin-bottom: 10px;
-  border-radius: 4px;
-  background-color: #f0f0f0;
-  transition: background-color 0.3s ease;
-
-  &:hover {
-    background-color: #e0e0e0;
-  }
-`;
+const RoomListItem: React.FC<{
+  onClick: () => void;
+  children: React.ReactNode;
+}> = ({ onClick, children }) => (
+  <div
+    className="cursor-pointer p-3 mb-3 rounded shadow-md bg-gray-100 hover:bg-gray-200 transition-colors duration-300"
+    onClick={onClick}
+  >
+    {children}
+  </div>
+);
 
 interface Room {
   id: number;
@@ -33,18 +23,15 @@ interface RoomListProps {
   onRoomClick: (roomId: number) => void;
 }
 
-const RoomList: React.FC<RoomListProps> = ({ rooms, onRoomClick }) => {
-  return (
-    <RoomListContainer>
-      <h2>방 목록</h2>
-      {rooms.map((room) => (
-        <RoomListItem key={room.id} onClick={() => onRoomClick(room.id)}>
-          <h3>{room.name}</h3>
-          <p>{room.description}</p>
-        </RoomListItem>
-      ))}
-    </RoomListContainer>
-  );
-};
+const RoomList: React.FC<RoomListProps> = ({ rooms, onRoomClick }) => (
+  <div>
+    {rooms.map((room: Room) => (
+      <RoomListItem key={room.id} onClick={() => onRoomClick(room.id)}>
+        <h3 className="font-semibold text-xl mb-2">{room.name}</h3>
+        <p className="text-gray-700">{room.description}</p>
+      </RoomListItem>
+    ))}
+  </div>
+);
 
 export default RoomList;

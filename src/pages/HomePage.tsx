@@ -7,11 +7,11 @@ const HomePage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [activeTabId, setActiveTabId] = useState(
-    location.pathname.split("/")[1] || "tab1"
+    location.pathname.split("/")[1] || "main"
   );
 
   useEffect(() => {
-    setActiveTabId(location.pathname.split("/")[1] || "tab1");
+    setActiveTabId(location.pathname.split("/")[1] || "main");
   }, [location.pathname]);
 
   const handleTabClick = (tabId: string) => {
@@ -22,14 +22,14 @@ const HomePage: React.FC = () => {
 
   // 탭 데이터
   const tabs = [
-    { id: "tab1", label: "탭 1" },
-    { id: "tab2", label: "탭 2" },
-    { id: "tab3", label: "탭 3" },
+    { id: "main", label: "탭 1" },
+    { id: "people", label: "탭 2" },
+    { id: "mypage", label: "탭 3" },
   ];
 
   return (
     <div className="flex justify-center mt-10">
-      <div className="w-full max-w-2xl">
+      <div className="w-full px-32">
         <TabBar
           tabs={tabs}
           activeTabId={activeTabId}
