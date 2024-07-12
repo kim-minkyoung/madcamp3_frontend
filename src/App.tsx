@@ -1,16 +1,25 @@
 import React from "react";
-import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
+import {
+  BrowserRouter as Router,
+  Route,
+  Routes,
+  Navigate,
+} from "react-router-dom";
 import HomePage from "./pages/HomePage";
-import RoomPage from "./pages/RoomPage";
-import NotFoundPage from "./pages/NotFoundPage";
+import MainPage from "./pages/MainPage";
+import PeoplePage from "./pages/PeoplePage";
+import MyPage from "./pages/MyPage";
 
 const App: React.FC = () => {
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/room/:roomId" element={<RoomPage />} />
-        <Route path="*" element={<NotFoundPage />} />
+        <Route path="/" element={<HomePage />}>
+          <Route index element={<Navigate to="/tab1" />} />
+          <Route path="tab1" element={<MainPage />} />
+          <Route path="tab2" element={<PeoplePage />} />
+          <Route path="tab3" element={<MyPage />} />
+        </Route>
       </Routes>
     </Router>
   );

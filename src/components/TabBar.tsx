@@ -10,7 +10,7 @@ const TabBar: React.FC<TabBarProps> = ({ tabs, activeTabId, onTabClick }) => {
   return (
     <div className="flex justify-between border-b border-gray-200">
       <nav className="flex items-center">
-        <span className="py-4 px-1">히히힣 온라인 노래방이당</span>
+        <span className="py-4 px-1">fdf</span>
       </nav>
       <nav className="flex space-x-1" aria-label="탭" role="tablist">
         {tabs.map((tab) => (
