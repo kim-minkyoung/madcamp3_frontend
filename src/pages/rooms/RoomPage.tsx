@@ -1,30 +1,50 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
-import io, { Socket } from "socket.io-client";
 
 const RoomPage: React.FC = () => {
   const { roomId } = useParams<{ roomId: string }>();
-  const localVideoRef = useRef<HTMLVideoElement>(null);
-  const remoteVideoRef = useRef<HTMLVideoElement>(null);
+  const localVideoRef = useRef<HTMLVideoElement | null>(null);
+  const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
-  const socketRef = useRef<Socket | null>(null);
+  const webSocketRef = useRef<WebSocket | null>(null);
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
 
   useEffect(() => {
-    const socket = io("http://localhost:3000");
-    socketRef.current = socket;
+    const init = async () => {
+      const socket = new WebSocket(
+        "wss://e4w7206ka6.execute-api.ap-northeast-2.amazonaws.com/production/"
+      );
+      webSocketRef.current = socket;
 
-    socket.emit("join-room", roomId);
+      socket.onopen = () => {
+        console.log("WebSocket connected");
+        socket.send(JSON.stringify({ action: "join-room", roomId }));
+      };
 
-    socket.on("user-joined", handleUserJoined);
-    socket.on("offer", handleReceiveOffer);
-    socket.on("answer", handleReceiveAnswer);
-    socket.on("ice-candidate", handleReceiveICECandidate);
+      socket.onmessage = (event) => {
+        console.log("Received message:", event.data);
+        try {
+          const message = JSON.parse(event.data);
+          handleMessage(message);
+        } catch (error) {
+          console.error("Error parsing JSON:", error);
+        }
+      };
 
-    navigator.mediaDevices
-      .getUserMedia({ video: true, audio: true })
-      .then((stream) => {
+      socket.onclose = () => {
+        console.log("WebSocket disconnected");
+      };
+
+      socket.onerror = (error) => {
+        console.error("WebSocket error:", error);
+      };
+
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: true,
+        });
         setLocalStream(stream);
         if (localVideoRef.current) {
           localVideoRef.current.srcObject = stream;
@@ -44,79 +64,179 @@ const RoomPage: React.FC = () => {
         });
 
         peerConnection.ontrack = (event) => {
-          const [stream] = event.streams;
-          setRemoteStream(stream);
+          const remoteMediaStream = event.streams[0];
+          setRemoteStream(remoteMediaStream);
           if (remoteVideoRef.current) {
-            remoteVideoRef.current.srcObject = stream;
+            remoteVideoRef.current.srcObject = remoteMediaStream;
           }
         };
 
         peerConnection.onicecandidate = (event) => {
-          if (event.candidate) {
-            socket.emit("ice-candidate", roomId, event.candidate);
+          if (
+            event.candidate &&
+            webSocketRef.current?.readyState === WebSocket.OPEN
+          ) {
+            webSocketRef.current.send(
+              JSON.stringify({
+                action: "ice-candidate",
+                roomId,
+                candidate: event.candidate,
+              })
+            );
           }
         };
-      })
-      .catch((error) => {
-        console.error("Error accessing media devices.", error);
-      });
+
+        const offer = await peerConnection.createOffer();
+        await peerConnection.setLocalDescription(offer);
+
+        if (webSocketRef.current?.readyState === WebSocket.OPEN) {
+          webSocketRef.current.send(
+            JSON.stringify({
+              action: "offer",
+              roomId,
+              offer: peerConnection.localDescription,
+            })
+          );
+        }
+      } catch (error) {
+        console.error(
+          "Error accessing media devices or creating peer connection:",
+          error
+        );
+      }
+    };
+
+    init();
 
     return () => {
-      socket.disconnect();
-      if (localStream) {
-        localStream.getTracks().forEach((track) => track.stop());
-      }
-      if (peerConnectionRef.current) {
-        peerConnectionRef.current.close();
+      if (webSocketRef.current?.readyState === WebSocket.OPEN) {
+        webSocketRef.current.close();
       }
     };
   }, [roomId]);
 
-  const handleUserJoined = async () => {
-    if (!peerConnectionRef.current || !localStream) return;
-
-    const offer = await peerConnectionRef.current.createOffer();
-    await peerConnectionRef.current.setLocalDescription(offer);
-    socketRef.current?.emit("offer", roomId, offer);
+  const handleMessage = (message: any) => {
+    console.log("Received message:", message);
+    const { action, data } = message;
+    switch (action) {
+      case "offer":
+        handleReceiveOffer(data.offer);
+        break;
+      case "answer":
+        handleReceiveAnswer(data.answer);
+        break;
+      case "ice-candidate":
+        handleReceiveICECandidate(data.candidate);
+        break;
+      case "chat-message":
+        handleChatMessage(data.message);
+        break;
+      default:
+        console.warn("Unhandled message:", message);
+        break;
+    }
   };
 
   const handleReceiveOffer = async (offer: RTCSessionDescriptionInit) => {
     if (!peerConnectionRef.current) return;
 
-    await peerConnectionRef.current.setRemoteDescription(offer);
-    const answer = await peerConnectionRef.current.createAnswer();
-    await peerConnectionRef.current.setLocalDescription(answer);
-    socketRef.current?.emit("answer", roomId, answer);
+    try {
+      await peerConnectionRef.current.setRemoteDescription(offer);
+      const answer = await peerConnectionRef.current.createAnswer();
+      await peerConnectionRef.current.setLocalDescription(answer);
+      webSocketRef.current?.send(
+        JSON.stringify({
+          action: "answer",
+          roomId,
+          answer: peerConnectionRef.current.localDescription,
+        })
+      );
+      handleChatMessage("ㅇㅇ1");
+    } catch (error) {
+      console.error("Error handling received offer:", error);
+    }
   };
 
   const handleReceiveAnswer = async (answer: RTCSessionDescriptionInit) => {
     if (!peerConnectionRef.current) return;
-    await peerConnectionRef.current.setRemoteDescription(answer);
+
+    try {
+      await peerConnectionRef.current.setRemoteDescription(answer);
+      handleChatMessage("ㅇㅇ2");
+    } catch (error) {
+      console.error("Error handling received answer:", error);
+    }
   };
 
   const handleReceiveICECandidate = async (candidate: RTCIceCandidate) => {
     if (!peerConnectionRef.current) return;
-    await peerConnectionRef.current.addIceCandidate(candidate);
+
+    try {
+      await peerConnectionRef.current.addIceCandidate(candidate);
+      handleChatMessage("ㅇㅇ3");
+    } catch (error) {
+      console.error("Error handling received ICE candidate:", error);
+    }
   };
 
   const handleEndCall = () => {
-    // Add call end logic here if needed
+    // Additional logic to end call if needed
+  };
+
+  const handleSendChat = () => {
+    const chatInput = document.getElementById("chatInput") as HTMLInputElement;
+    const message = chatInput.value.trim();
+    if (message) {
+      sendMessage(message);
+      chatInput.value = "";
+    }
+  };
+
+  const sendMessage = (message: string) => {
+    if (webSocketRef.current?.readyState === WebSocket.OPEN) {
+      webSocketRef.current.send(
+        JSON.stringify({
+          action: "chat-message",
+          roomId,
+          message,
+        })
+      );
+      console.log(`보낸 사람: ${message}`);
+    }
+  };
+
+  const handleChatMessage = (message: string) => {
+    console.log(`받은 사람: ${message}`);
+    // 채팅 메시지를 UI에 추가하는 코드를 여기에 추가하세요.
   };
 
   return (
     <div>
-      <h2>Room {roomId} 화상 통화</h2>
+      <h2>Room {roomId} Video Call</h2>
       <div>
-        <video
-          ref={localVideoRef}
-          autoPlay
-          playsInline
-          muted
-          className="transform-none"
-        ></video>
-        <video ref={remoteVideoRef} autoPlay playsInline></video>
+        {remoteStream && (
+          <video
+            ref={remoteVideoRef}
+            autoPlay
+            playsInline
+            className="transform-none"
+          ></video>
+        )}
+        {localStream && (
+          <video
+            ref={localVideoRef}
+            autoPlay
+            playsInline
+            muted
+            className="transform-none"
+          ></video>
+        )}
       </div>
-      <button onClick={handleEndCall}>통화 종료</button>
+      <div>
+        <input type="text" id="chatInput" />
+        <button onClick={handleSendChat}>Send</button>
+      </div>
+      <button onClick={handleEndCall}>End Call</button>
     </div>
   );
 };
