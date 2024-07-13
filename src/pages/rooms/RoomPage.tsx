@@ -23,13 +23,25 @@ const RoomPage: React.FC = () => {
       };
 
       socket.onmessage = (event) => {
-        console.log("Received message:", event.data);
         try {
           const message = JSON.parse(event.data);
-          handleMessage(message);
+          console.log("Received raw message:", event.data);
+          console.log("Parsed message:", message);
+
+          if (message.action === "sendMessage") {
+            handleChatMessage(message.message);
+          }
+
+          // Handle other types of messages as needed
         } catch (error) {
           console.error("Error parsing JSON:", error);
         }
+      };
+
+      const handleChatMessage = (message: string) => {
+        console.log(`Received chat message: ${message}`);
+        // 여기에 채팅 메시지를 UI에 추가하는 로직을 추가하세요.
+        // 예를 들어, 메시지를 화면에 출력하거나 채팅 UI 컴포넌트를 업데이트할 수 있습니다.
       };
 
       socket.onclose = () => {
@@ -115,101 +127,6 @@ const RoomPage: React.FC = () => {
     };
   }, [roomId]);
 
-  const handleMessage = (message: any) => {
-    console.log("Received message:", message);
-    const { action, data } = message;
-    switch (action) {
-      case "offer":
-        handleReceiveOffer(data.offer);
-        break;
-      case "answer":
-        handleReceiveAnswer(data.answer);
-        break;
-      case "ice-candidate":
-        handleReceiveICECandidate(data.candidate);
-        break;
-      case "chat-message":
-        handleChatMessage(data.message);
-        break;
-      default:
-        console.warn("Unhandled message:", message);
-        break;
-    }
-  };
-
-  const handleReceiveOffer = async (offer: RTCSessionDescriptionInit) => {
-    if (!peerConnectionRef.current) return;
-
-    try {
-      await peerConnectionRef.current.setRemoteDescription(offer);
-      const answer = await peerConnectionRef.current.createAnswer();
-      await peerConnectionRef.current.setLocalDescription(answer);
-      webSocketRef.current?.send(
-        JSON.stringify({
-          action: "answer",
-          roomId,
-          answer: peerConnectionRef.current.localDescription,
-        })
-      );
-      handleChatMessage("ㅇㅇ1");
-    } catch (error) {
-      console.error("Error handling received offer:", error);
-    }
-  };
-
-  const handleReceiveAnswer = async (answer: RTCSessionDescriptionInit) => {
-    if (!peerConnectionRef.current) return;
-
-    try {
-      await peerConnectionRef.current.setRemoteDescription(answer);
-      handleChatMessage("ㅇㅇ2");
-    } catch (error) {
-      console.error("Error handling received answer:", error);
-    }
-  };
-
-  const handleReceiveICECandidate = async (candidate: RTCIceCandidate) => {
-    if (!peerConnectionRef.current) return;
-
-    try {
-      await peerConnectionRef.current.addIceCandidate(candidate);
-      handleChatMessage("ㅇㅇ3");
-    } catch (error) {
-      console.error("Error handling received ICE candidate:", error);
-    }
-  };
-
-  const handleEndCall = () => {
-    // Additional logic to end call if needed
-  };
-
-  const handleSendChat = () => {
-    const chatInput = document.getElementById("chatInput") as HTMLInputElement;
-    const message = chatInput.value.trim();
-    if (message) {
-      sendMessage(message);
-      chatInput.value = "";
-    }
-  };
-
-  const sendMessage = (message: string) => {
-    if (webSocketRef.current?.readyState === WebSocket.OPEN) {
-      webSocketRef.current.send(
-        JSON.stringify({
-          action: "chat-message",
-          roomId,
-          message,
-        })
-      );
-      console.log(`보낸 사람: ${message}`);
-    }
-  };
-
-  const handleChatMessage = (message: string) => {
-    console.log(`받은 사람: ${message}`);
-    // 채팅 메시지를 UI에 추가하는 코드를 여기에 추가하세요.
-  };
-
   return (
     <div>
       <h2>Room {roomId} Video Call</h2>
@@ -234,9 +151,37 @@ const RoomPage: React.FC = () => {
       </div>
       <div>
         <input type="text" id="chatInput" />
-        <button onClick={handleSendChat}>Send</button>
+        <button
+          onClick={() => {
+            if (webSocketRef.current?.readyState === WebSocket.OPEN) {
+              const message = (
+                document.getElementById("chatInput") as HTMLInputElement
+              ).value.trim();
+              if (message) {
+                webSocketRef.current.send(
+                  JSON.stringify({
+                    action: "sendmessage",
+                    roomId,
+                    message,
+                  })
+                );
+                console.log(`Sent chat message: ${message}`);
+              }
+            }
+          }}
+        >
+          Send
+        </button>
       </div>
-      <button onClick={handleEndCall}>End Call</button>
+      <button
+        onClick={() => {
+          if (webSocketRef.current?.readyState === WebSocket.OPEN) {
+            webSocketRef.current.close();
+          }
+        }}
+      >
+        End Call
+      </button>
     </div>
   );
 };
