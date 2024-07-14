@@ -1,21 +1,23 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { useParams } from "react-router-dom";
-import { handleOffer, handleAnswer, handleCandidate } from "./handlers";
+import { handleOffer, handleAnswer, handleCandidate, handleUserLeft } from "./handlers";
 
 const RoomPage: React.FC = () => {
   const { roomId } = useParams<{ roomId: string }>();
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const webSocketRef = useRef<WebSocket | null>(null);
-  const [peerConnections, setPeerConnections] = useState<{ [id: string]: RTCPeerConnection }>({});
+  const peerConnectionsRef = useRef<{ [id: string]: RTCPeerConnection }>({});
   const [remoteStreams, setRemoteStreams] = useState<{ [id: string]: MediaStream }>({});
   const [messages, setMessages] = useState<{ sender: string; text: string }[]>([]);
   const [inputMessage, setInputMessage] = useState("");
   const userId = useRef<string>(Math.random().toString(36).substring(7));
+  const [selectedUser, setSelectedUser] = useState<string | null>(null);
+  const iceCandidatesQueue = useRef<{ [id: string]: RTCIceCandidateInit[] }>({}).current;
 
   const createPeerConnection = useCallback(
     (id: string) => {
-      console.log("Creating peer connection with user:", id);
+      console.log("Creating PeerConnection for user:", id);
       const peerConnection = new RTCPeerConnection({
         iceServers: [
           {
@@ -25,8 +27,8 @@ const RoomPage: React.FC = () => {
       });
 
       peerConnection.onicecandidate = (event) => {
-        console.log("Sending ICE candidate to user:", id);
         if (event.candidate && webSocketRef.current?.readyState === WebSocket.OPEN) {
+          console.log("ICE candidate generated:", event.candidate);
           webSocketRef.current.send(
             JSON.stringify({
               action: "ice-candidate",
@@ -45,32 +47,57 @@ const RoomPage: React.FC = () => {
         setRemoteStreams((prevStreams) => ({ ...prevStreams, [id]: remoteMediaStream }));
       };
 
-      localStream?.getTracks().forEach((track) => {
-        peerConnection.addTrack(track, localStream);
-      });
+      if (localStream) {
+        localStream.getTracks().forEach((track) => {
+          console.log("Adding track to PeerConnection:", track);
+          peerConnection.addTrack(track, localStream);
+        });
+      } else {
+        console.warn("Local stream is not available when creating PeerConnection");
+      }
 
-      setPeerConnections((prevConnections) => ({ ...prevConnections, [id]: peerConnection }));
+      peerConnectionsRef.current[id] = peerConnection;
 
       return peerConnection;
     },
     [localStream, roomId]
   );
 
-  
+  useEffect(() => {
+    const init = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: true,
+        });
+        console.log("Local stream obtained:", stream);
+        setLocalStream(stream);
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = stream;
+          console.log("Local video element set with stream");
+        }
+      } catch (error) {
+        console.error("Error accessing media devices or creating peer connection:", error);
+      }
+    };
+
+    init();
+  }, []);
 
   useEffect(() => {
+    if (!localStream) return; // Wait until localStream is set
     if (webSocketRef.current) return;
     if (!roomId) return;
 
     const socket = new WebSocket("wss://e4w7206ka6.execute-api.ap-northeast-2.amazonaws.com/production");
     webSocketRef.current = socket;
 
-    socket.onopen = () => {      
+    socket.onopen = () => {
       webSocketRef.current?.send(
-        JSON.stringify({ 
+        JSON.stringify({
           action: "join-room",
           roomId,
-          userId: userId.current 
+          userId: userId.current,
         })
       );
       console.log("WebSocket connected");
@@ -83,9 +110,15 @@ const RoomPage: React.FC = () => {
 
         if (message.action === "user-joined" && message.userId !== userId.current) {
           console.log("User joined:", message.userId);
+
+          // PeerConnection 생성
           const peerConnection = createPeerConnection(message.userId);
+
+          // 오퍼 생성 및 설정
           const offer = await peerConnection.createOffer();
           await peerConnection.setLocalDescription(offer);
+
+          // 오퍼 전송
           webSocketRef.current?.send(
             JSON.stringify({
               action: "offer",
@@ -95,6 +128,7 @@ const RoomPage: React.FC = () => {
               targetId: message.userId,
             })
           );
+
           console.log("Creating offer for new user:", message.userId);
         }
 
@@ -103,16 +137,33 @@ const RoomPage: React.FC = () => {
         }
 
         if (message.action === "offer" && message.userId !== userId.current) {
-          await handleOffer(message.offer, message.userId, createPeerConnection, webSocketRef, roomId, userId.current);
+          await handleOffer(message.offer, message.userId, createPeerConnection, webSocketRef, roomId, userId.current, iceCandidatesQueue);
         }
 
         if (message.action === "answer" && message.userId !== userId.current) {
-          await handleAnswer(message.answer, message.userId, peerConnections);
+          await handleAnswer(message.answer, message.userId, peerConnectionsRef.current, iceCandidatesQueue);
           console.log("Received answer from user:", message.userId);
         }
 
         if (message.action === "ice-candidate" && message.userId !== userId.current) {
-          await handleCandidate(message.candidate, message.userId, peerConnections);
+          console.log(peerConnectionsRef.current); // Debug: 확인용
+          await handleCandidate(message.candidate, message.userId, peerConnectionsRef.current, iceCandidatesQueue);
+        }
+
+        if (message.action === "user-left" && message.userId !== userId.current) {
+          console.log("User left:", message.userId);
+          // 상태에서 해당 유저의 스트림 제거
+          setRemoteStreams((prevStreams) => {
+            const newStreams = { ...prevStreams };
+            delete newStreams[message.userId];
+            return newStreams;
+          });
+
+          // 피어 연결 정리
+          if (peerConnectionsRef.current[message.userId]) {
+            peerConnectionsRef.current[message.userId].close();
+            delete peerConnectionsRef.current[message.userId];
+          }
         }
 
       } catch (error) {
@@ -122,6 +173,7 @@ const RoomPage: React.FC = () => {
 
     socket.onclose = () => {
       console.log("WebSocket disconnected");
+      handleUserLeft(userId.current, peerConnectionsRef.current, setRemoteStreams);
     };
 
     socket.onerror = (error) => {
@@ -133,27 +185,7 @@ const RoomPage: React.FC = () => {
         webSocketRef.current.close();
       }
     };
-  }, [roomId, createPeerConnection, handleOffer, handleAnswer, handleCandidate]);
-
-  useEffect(() => {
-    const init = async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-          audio: true,
-        });
-        console.log("Local stream obtained");
-        setLocalStream(stream);
-        if (localVideoRef.current) {
-          localVideoRef.current.srcObject = stream;
-        }
-      } catch (error) {
-        console.error("Error accessing media devices or creating peer connection:", error);
-      }
-    };
-
-    init();
-  }, []);
+  }, [roomId, createPeerConnection, handleOffer, handleAnswer, handleCandidate, localStream]);
 
   const handleChatMessage = (message: { sender: string; text: string }) => {
     console.log(`Received chat message: ${message.text}`);
@@ -179,6 +211,10 @@ const RoomPage: React.FC = () => {
     }
   };
 
+  const handleUserSelect = (userId: string) => {
+    setSelectedUser(userId);
+  };
+
   return (
     <div style={{ display: "flex", flexDirection: "row", height: "100vh" }}>
       <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center" }}>
@@ -187,10 +223,17 @@ const RoomPage: React.FC = () => {
           {localStream && (
             <video ref={localVideoRef} autoPlay playsInline muted style={{ width: "100%", height: "50%" }} />
           )}
-          {Object.keys(remoteStreams).map((id) => (
-            <div key={id} style={{ width: "100%", height: "50%" }}>
-              <RemoteVideo stream={remoteStreams[id]} />
+          {selectedUser && remoteStreams[selectedUser] && (
+            <div style={{ width: "100%", height: "50%" }}>
+              <RemoteVideo stream={remoteStreams[selectedUser]} />
             </div>
+          )}
+        </div>
+        <div>
+          {Object.keys(remoteStreams).map((id) => (
+            <button key={id} onClick={() => handleUserSelect(id)}>
+              Show User {id}
+            </button>
           ))}
         </div>
       </div>
@@ -230,8 +273,8 @@ const RemoteVideo: React.FC<{ stream: MediaStream }> = ({ stream }) => {
 
   useEffect(() => {
     if (videoRef.current) {
-      console.log("Setting remote video stream");
       videoRef.current.srcObject = stream;
+      console.log("Setting remote video stream");
     }
   }, [stream]);
 
