@@ -22,9 +22,9 @@ const HomePage: React.FC = () => {
 
   // 탭 데이터
   const tabs = [
-    { id: "main", label: "탭 1" },
-    { id: "people", label: "탭 2" },
-    { id: "mypage", label: "탭 3" },
+    { label: "방 찾기", id: "main" },
+    { label: "랭킹 보기", id: "people" },
+    { label: "마이페이지", id: "mypage" },
   ];
 
   return (

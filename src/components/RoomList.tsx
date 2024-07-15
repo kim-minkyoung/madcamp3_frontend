@@ -5,7 +5,7 @@ const RoomListItem: React.FC<{
   children: React.ReactNode;
 }> = ({ onClick, children }) => (
   <div
-    className="cursor-pointer p-3 mb-3 rounded shadow-md bg-gray-100 hover:bg-gray-200 transition-colors duration-300"
+    className="flex justify-between p-3 mb-3 transition-colors duration-300 bg-gray-100 rounded shadow-md cursor-pointer hover:bg-gray-200"
     onClick={onClick}
   >
     {children}
@@ -16,6 +16,7 @@ interface Room {
   id: number;
   name: string;
   description: string;
+  rank_mode: boolean;
 }
 
 interface RoomListProps {
@@ -27,8 +28,19 @@ const RoomList: React.FC<RoomListProps> = ({ rooms, onRoomClick }) => (
   <div>
     {rooms.map((room: Room) => (
       <RoomListItem key={room.id} onClick={() => onRoomClick(room.id)}>
-        <h3 className="font-semibold text-xl mb-2">{room.name}</h3>
-        <p className="text-gray-700">{room.description}</p>
+        <div>
+          <h3 className="mb-2 text-xl font-semibold">{room.name}</h3>
+          <p className="text-gray-700">{room.description}</p>
+        </div>
+        <div
+          className={`text-lg px-2 py-1 rounded ${
+            room.rank_mode
+              ? "bg-red-500 text-white"
+              : "bg-green-300 text-gray-700"
+          }`}
+        >
+          {room.rank_mode ? "랭크 모드" : "일반 모드"}
+        </div>
       </RoomListItem>
     ))}
   </div>
