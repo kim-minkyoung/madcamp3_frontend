@@ -1,4 +1,5 @@
 import React from "react";
+import {Room} from "../services/RoomService";
 
 const RoomListItem: React.FC<{
   onClick: () => void;
@@ -12,12 +13,6 @@ const RoomListItem: React.FC<{
   </div>
 );
 
-interface Room {
-  id: number;
-  name: string;
-  description: string;
-  rank_mode: boolean;
-}
 
 interface RoomListProps {
   rooms: Room[];
@@ -27,10 +22,10 @@ interface RoomListProps {
 const RoomList: React.FC<RoomListProps> = ({ rooms, onRoomClick }) => (
   <div>
     {rooms.map((room: Room) => (
-      <RoomListItem key={room.id} onClick={() => onRoomClick(room.id)}>
+      <RoomListItem key={room.room_id} onClick={() => onRoomClick(room.room_id)}>
         <div>
-          <h3 className="mb-2 text-xl font-semibold">{room.name}</h3>
-          <p className="text-gray-700">{room.description}</p>
+          <h3 className="mb-2 text-xl font-semibold">{room.title}</h3>
+          <p className="text-gray-700">{room.sub_title}</p>
         </div>
         <div
           className={`text-lg px-2 py-1 rounded ${
