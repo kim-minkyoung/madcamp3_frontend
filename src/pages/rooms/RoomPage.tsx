@@ -150,20 +150,9 @@ const RoomPage: React.FC = () => {
           await handleCandidate(message.candidate, message.userId, peerConnectionsRef.current, iceCandidatesQueue);
         }
 
-        if (message.action === "user-left" && message.userId !== userId.current) {
+        if (message.action === "leave-room" && message.userId !== userId.current) {
           console.log("User left:", message.userId);
-          // 상태에서 해당 유저의 스트림 제거
-          setRemoteStreams((prevStreams) => {
-            const newStreams = { ...prevStreams };
-            delete newStreams[message.userId];
-            return newStreams;
-          });
-
-          // 피어 연결 정리
-          if (peerConnectionsRef.current[message.userId]) {
-            peerConnectionsRef.current[message.userId].close();
-            delete peerConnectionsRef.current[message.userId];
-          }
+          handleUserLeft(message.userId, peerConnectionsRef.current, setRemoteStreams);
         }
 
       } catch (error) {
@@ -173,6 +162,13 @@ const RoomPage: React.FC = () => {
 
     socket.onclose = () => {
       console.log("WebSocket disconnected");
+      webSocketRef.current?.send(
+        JSON.stringify({
+          action: "leave-room",
+          roomId,
+          userId: userId.current,
+        })
+      );
       handleUserLeft(userId.current, peerConnectionsRef.current, setRemoteStreams);
     };
 
@@ -181,11 +177,49 @@ const RoomPage: React.FC = () => {
     };
 
     return () => {
+      // if (webSocketRef.current?.readyState === WebSocket.OPEN) {
+      //   webSocketRef.current.send(
+      //     JSON.stringify({
+      //       action: "leave-room",
+      //       roomId,
+      //       userId: userId.current,
+      //     })
+      //   );
+      //   webSocketRef.current.close();
+      // }
+    };
+  }, [roomId, createPeerConnection, localStream, iceCandidatesQueue]);
+
+  useEffect(() => {
+    const handleBeforeUnload = () => {
       if (webSocketRef.current?.readyState === WebSocket.OPEN) {
+        webSocketRef.current.send(
+          JSON.stringify({
+            action: "leave-room",
+            roomId,
+            userId: userId.current,
+          })
+        );
         webSocketRef.current.close();
       }
     };
-  }, [roomId, createPeerConnection, handleOffer, handleAnswer, handleCandidate, localStream]);
+  
+    window.addEventListener("beforeunload", handleBeforeUnload);
+  
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      if (webSocketRef.current?.readyState === WebSocket.OPEN) {
+        webSocketRef.current.send(
+          JSON.stringify({
+            action: "leave-room",
+            roomId,
+            userId: userId.current,
+          })
+        );
+        webSocketRef.current.close();
+      }
+    };
+  }, [roomId]);
 
   const handleChatMessage = (message: { sender: string; text: string }) => {
     console.log(`Received chat message: ${message.text}`);
