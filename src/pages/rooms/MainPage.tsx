@@ -6,7 +6,6 @@ import LoadingSpinner from "../../components/LoadingSpinner";
 import RoomList from "../../components/RoomList";
 import { Room, RoomService } from "../../services/RoomService"; // RoomService import
 
-
 const MainPage: React.FC = () => {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
@@ -33,9 +32,14 @@ const MainPage: React.FC = () => {
     navigate(`/room/${roomId}`);
   };
 
+  const handleCreateRoomClick = () => {
+    navigate("/create-room");
+  };
+
   return (
     <div>
       <p>원하는 방에 입장해서 노래를 마음껏 불러봐요</p>
+      <button onClick={handleCreateRoomClick}>방 생성</button>
       {loading ? (
         <LoadingSpinner />
       ) : (
