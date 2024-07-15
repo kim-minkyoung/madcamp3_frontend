@@ -29,10 +29,6 @@ const RoomPage: React.FC = () => {
   const [showReservedSongs, setShowReservedSongs] = useState(false); // 예약된 곡 목록 보기 상태
   const [searchedVideoId, setSearchedVideoId] = useState<string | null>(null); // 검색된 유튜브 영상 ID
 
-  // const handleShowReservedSongs = () => {
-  //   setShowReservedSongs(!showReservedSongs); // 예약된 곡 목록 보기 토글
-  // };
-
   const createPeerConnection = useCallback(
     (id: string) => {
       console.log("Creating PeerConnection for user:", id);
@@ -501,3 +497,5 @@ const RemoteVideo: React.FC<{ stream: MediaStream }> = ({ stream }) => {
 };
 
 export default RoomPage;
+
+// 여기서 유튜브를 재생하면 내가 재생하는 영상과 소리가 다른 사람에게도 동일하게 보였으면 좋겠어
