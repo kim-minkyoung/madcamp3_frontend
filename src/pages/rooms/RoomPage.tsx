@@ -1,6 +1,11 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { useParams } from "react-router-dom";
-import { handleOffer, handleAnswer, handleCandidate, handleUserLeft } from "./handlers";
+import {
+  handleOffer,
+  handleAnswer,
+  handleCandidate,
+  handleUserLeft,
+} from "./handlers";
 
 const RoomPage: React.FC = () => {
   const { roomId } = useParams<{ roomId: string }>();
@@ -8,12 +13,24 @@ const RoomPage: React.FC = () => {
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const webSocketRef = useRef<WebSocket | null>(null);
   const peerConnectionsRef = useRef<{ [id: string]: RTCPeerConnection }>({});
-  const [remoteStreams, setRemoteStreams] = useState<{ [id: string]: MediaStream }>({});
-  const [messages, setMessages] = useState<{ sender: string; text: string }[]>([]);
+  const [remoteStreams, setRemoteStreams] = useState<{
+    [id: string]: MediaStream;
+  }>({});
+  const [messages, setMessages] = useState<{ sender: string; text: string }[]>(
+    []
+  );
   const [inputMessage, setInputMessage] = useState("");
   const userId = useRef<string>(Math.random().toString(36).substring(7));
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
-  const iceCandidatesQueue = useRef<{ [id: string]: RTCIceCandidateInit[] }>({}).current;
+  const iceCandidatesQueue = useRef<{ [id: string]: RTCIceCandidateInit[] }>(
+    {}
+  ).current;
+
+  const [showReservedSongs, setShowReservedSongs] = useState(false); // 예약된 곡 목록 보기 상태
+
+  const handleShowReservedSongs = () => {
+    setShowReservedSongs(!showReservedSongs); // 예약된 곡 목록 보기 토글
+  };
 
   const createPeerConnection = useCallback(
     (id: string) => {
@@ -27,7 +44,10 @@ const RoomPage: React.FC = () => {
       });
 
       peerConnection.onicecandidate = (event) => {
-        if (event.candidate && webSocketRef.current?.readyState === WebSocket.OPEN) {
+        if (
+          event.candidate &&
+          webSocketRef.current?.readyState === WebSocket.OPEN
+        ) {
           console.log("ICE candidate generated:", event.candidate);
           webSocketRef.current.send(
             JSON.stringify({
@@ -44,7 +64,10 @@ const RoomPage: React.FC = () => {
       peerConnection.ontrack = (event) => {
         console.log("Received remote track from user:", id);
         const remoteMediaStream = event.streams[0];
-        setRemoteStreams((prevStreams) => ({ ...prevStreams, [id]: remoteMediaStream }));
+        setRemoteStreams((prevStreams) => ({
+          ...prevStreams,
+          [id]: remoteMediaStream,
+        }));
       };
 
       if (localStream) {
@@ -53,7 +76,9 @@ const RoomPage: React.FC = () => {
           peerConnection.addTrack(track, localStream);
         });
       } else {
-        console.warn("Local stream is not available when creating PeerConnection");
+        console.warn(
+          "Local stream is not available when creating PeerConnection"
+        );
       }
 
       peerConnectionsRef.current[id] = peerConnection;
@@ -68,7 +93,7 @@ const RoomPage: React.FC = () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           video: true,
-          audio: true,
+          audio: true, // TODO: Audio 설정
         });
         console.log("Local stream obtained:", stream);
         setLocalStream(stream);
@@ -77,7 +102,10 @@ const RoomPage: React.FC = () => {
           console.log("Local video element set with stream");
         }
       } catch (error) {
-        console.error("Error accessing media devices or creating peer connection:", error);
+        console.error(
+          "Error accessing media devices or creating peer connection:",
+          error
+        );
       }
     };
 
@@ -89,7 +117,9 @@ const RoomPage: React.FC = () => {
     if (webSocketRef.current) return;
     if (!roomId) return;
 
-    const socket = new WebSocket("wss://e4w7206ka6.execute-api.ap-northeast-2.amazonaws.com/production");
+    const socket = new WebSocket(
+      "wss://e4w7206ka6.execute-api.ap-northeast-2.amazonaws.com/production"
+    );
     webSocketRef.current = socket;
 
     socket.onopen = () => {
@@ -108,7 +138,10 @@ const RoomPage: React.FC = () => {
         const message = JSON.parse(event.data);
         console.log("Received message:", message.action);
 
-        if (message.action === "user-joined" && message.userId !== userId.current) {
+        if (
+          message.action === "user-joined" &&
+          message.userId !== userId.current
+        ) {
           console.log("User joined:", message.userId);
 
           // PeerConnection 생성
@@ -132,29 +165,60 @@ const RoomPage: React.FC = () => {
           console.log("Creating offer for new user:", message.userId);
         }
 
-        if (message.action === "chat-message" && message.userId !== userId.current && message.roomId === roomId) {
+        if (
+          message.action === "chat-message" &&
+          message.userId !== userId.current &&
+          message.roomId === roomId
+        ) {
           handleChatMessage({ sender: "you", text: message.message.text });
         }
 
         if (message.action === "offer" && message.userId !== userId.current) {
-          await handleOffer(message.offer, message.userId, createPeerConnection, webSocketRef, roomId, userId.current, iceCandidatesQueue);
+          await handleOffer(
+            message.offer,
+            message.userId,
+            createPeerConnection,
+            webSocketRef,
+            roomId,
+            userId.current,
+            iceCandidatesQueue
+          );
         }
 
         if (message.action === "answer" && message.userId !== userId.current) {
-          await handleAnswer(message.answer, message.userId, peerConnectionsRef.current, iceCandidatesQueue);
+          await handleAnswer(
+            message.answer,
+            message.userId,
+            peerConnectionsRef.current,
+            iceCandidatesQueue
+          );
           console.log("Received answer from user:", message.userId);
         }
 
-        if (message.action === "ice-candidate" && message.userId !== userId.current) {
+        if (
+          message.action === "ice-candidate" &&
+          message.userId !== userId.current
+        ) {
           console.log(peerConnectionsRef.current); // Debug: 확인용
-          await handleCandidate(message.candidate, message.userId, peerConnectionsRef.current, iceCandidatesQueue);
+          await handleCandidate(
+            message.candidate,
+            message.userId,
+            peerConnectionsRef.current,
+            iceCandidatesQueue
+          );
         }
 
-        if (message.action === "leave-room" && message.userId !== userId.current) {
+        if (
+          message.action === "leave-room" &&
+          message.userId !== userId.current
+        ) {
           console.log("User left:", message.userId);
-          handleUserLeft(message.userId, peerConnectionsRef.current, setRemoteStreams);
+          handleUserLeft(
+            message.userId,
+            peerConnectionsRef.current,
+            setRemoteStreams
+          );
         }
-
       } catch (error) {
         console.error("Error parsing JSON:", error);
       }
@@ -169,7 +233,11 @@ const RoomPage: React.FC = () => {
           userId: userId.current,
         })
       );
-      handleUserLeft(userId.current, peerConnectionsRef.current, setRemoteStreams);
+      handleUserLeft(
+        userId.current,
+        peerConnectionsRef.current,
+        setRemoteStreams
+      );
     };
 
     socket.onerror = (error) => {
@@ -177,20 +245,22 @@ const RoomPage: React.FC = () => {
     };
 
     return () => {
-      // if (webSocketRef.current?.readyState === WebSocket.OPEN) {
-      //   webSocketRef.current.send(
-      //     JSON.stringify({
-      //       action: "leave-room",
-      //       roomId,
-      //       userId: userId.current,
-      //     })
-      //   );
-      //   webSocketRef.current.close();
-      // }
+      // Clean up socket and connections
+      if (webSocketRef.current?.readyState === WebSocket.OPEN) {
+        webSocketRef.current.send(
+          JSON.stringify({
+            action: "leave-room",
+            roomId,
+            userId: userId.current,
+          })
+        );
+        webSocketRef.current.close();
+      }
     };
   }, [roomId, createPeerConnection, localStream, iceCandidatesQueue]);
 
   useEffect(() => {
+    // Clean up on page unload
     const handleBeforeUnload = () => {
       if (webSocketRef.current?.readyState === WebSocket.OPEN) {
         webSocketRef.current.send(
@@ -203,9 +273,9 @@ const RoomPage: React.FC = () => {
         webSocketRef.current.close();
       }
     };
-  
+
     window.addEventListener("beforeunload", handleBeforeUnload);
-  
+
     return () => {
       window.removeEventListener("beforeunload", handleBeforeUnload);
       if (webSocketRef.current?.readyState === WebSocket.OPEN) {
@@ -250,15 +320,40 @@ const RoomPage: React.FC = () => {
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "row", height: "100vh" }}>
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center" }}>
-        <h2>Room {roomId} Video Call</h2>
-        <div style={{ display: "flex", flexDirection: "column", flex: 1 }}>
+    <div style={{ display: "flex", flexDirection: "row", height: "80vh" }}>
+      <div className="p-4">
+        <h3 className="mb-4 text-lg font-semibold">예약된 곡 목록</h3>
+        <ul>
+          <li>곡 1</li>
+          <li>곡 2</li>
+          <li>곡 3</li>
+        </ul>
+      </div>
+      <div
+        style={{
+          flexDirection: "column",
+          alignItems: "center",
+          width: "15%",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            flex: 1,
+          }}
+        >
           {localStream && (
-            <video ref={localVideoRef} autoPlay playsInline muted style={{ width: "100%", height: "50%" }} />
+            <video
+              ref={localVideoRef}
+              autoPlay
+              playsInline
+              muted
+              style={{ width: "100%", height: "100%" }}
+            />
           )}
           {selectedUser && remoteStreams[selectedUser] && (
-            <div style={{ width: "100%", height: "50%" }}>
+            <div style={{ width: "100%", height: "100%" }}>
               <RemoteVideo stream={remoteStreams[selectedUser]} />
             </div>
           )}
@@ -270,23 +365,67 @@ const RoomPage: React.FC = () => {
             </button>
           ))}
         </div>
+        <section className="flex flex-col py-4">
+          <button className="p-2 mb-2 text-white bg-blue-500 rounded hover:bg-blue-600">
+            박수
+          </button>
+          <button className="p-2 mb-2 text-white bg-blue-500 rounded hover:bg-blue-600">
+            미러볼
+          </button>
+          <button
+            className="p-2 mb-2 text-white bg-blue-500 rounded hover:bg-blue-600"
+            onClick={handleShowReservedSongs}
+          >
+            노래 끝내기
+          </button>
+        </section>
       </div>
-      <div className="flex flex-col h-screen">
+      <div className="flex-grow mx-4">
+        {/* 여기에 유튜브 영상을 넣습니다 */}
+        <iframe
+          width="100%"
+          height="100%"
+          src="https://www.youtube.com/embed/dQw4w9WgXcQ"
+          frameBorder="0"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+          title="YouTube video"
+        />
+      </div>
+      <div className="flex flex-col">
         <div className="flex-grow p-4 overflow-auto">
           {messages.map((message, index) => (
-            <div key={index} className={`flex ${message.sender === "Me" ? "justify-end" : "justify-start"} mb-4`}>
+            <div
+              key={index}
+              className={`flex ${
+                message.sender === "Me" ? "justify-end" : "justify-start"
+              } mb-4`}
+            >
               {message.sender !== "Me" && (
-                <img src="https://source.unsplash.com/random/50x50" className="object-cover w-8 h-8 rounded-full" alt="" />
+                <img
+                  src="https://source.unsplash.com/random/50x50"
+                  className="object-cover w-8 h-8 rounded-full"
+                  alt=""
+                />
               )}
-              <div className={`py-3 px-4 rounded-3xl text-white ${message.sender === "Me" ? "bg-blue-400" : "bg-gray-400"} ml-2`}>
+              <div
+                className={`py-3 px-4 rounded-3xl text-white ${
+                  message.sender === "Me" ? "bg-blue-400" : "bg-gray-400"
+                } ml-2`}
+              >
                 {message.text}
               </div>
               {message.sender === "Me" && (
-                <img src="https://source.unsplash.com/random/50x50" className="object-cover w-8 h-8 rounded-full" alt="" />
+                <img
+                  src="https://source.unsplash.com/random/50x50"
+                  className="object-cover w-8 h-8 rounded-full"
+                  alt=""
+                />
               )}
             </div>
           ))}
         </div>
+        {/* 메시지 입력창 */}
         <div className="p-4 bg-gray-300">
           <input
             className="w-full px-3 py-2 rounded-xl"
@@ -312,7 +451,14 @@ const RemoteVideo: React.FC<{ stream: MediaStream }> = ({ stream }) => {
     }
   }, [stream]);
 
-  return <video ref={videoRef} autoPlay playsInline style={{ width: "100%", height: "100%" }} />;
+  return (
+    <video
+      ref={videoRef}
+      autoPlay
+      playsInline
+      style={{ width: "100%", height: "100%" }}
+    />
+  );
 };
 
 export default RoomPage;

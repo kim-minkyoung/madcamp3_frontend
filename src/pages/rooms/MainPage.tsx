@@ -33,10 +33,7 @@ const MainPage: React.FC = () => {
 
   return (
     <div>
-      <p>
-        이것은 <span className="font-semibold text-gray-800">첫 번째</span> 탭의
-        내용입니다.
-      </p>
+      <p>원하는 방에 입장해서 노래를 마음껏 불러봐요</p>
       {loading ? (
         <LoadingSpinner />
       ) : (

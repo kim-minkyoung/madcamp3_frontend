@@ -8,9 +8,9 @@ interface TabBarProps {
 
 const TabBar: React.FC<TabBarProps> = ({ tabs, activeTabId, onTabClick }) => {
   return (
-    <div className="flex justify-between border-b border-gray-200">
+    <div className="z-50 flex justify-between border-b border-gray-200">
       <nav className="flex items-center">
-        <span className="py-4 px-1">fdf</span>
+        <span className="px-1 py-4">온라인 노래방</span>
       </nav>
       <nav className="flex space-x-1" aria-label="탭" role="tablist">
         {tabs.map((tab) => (
