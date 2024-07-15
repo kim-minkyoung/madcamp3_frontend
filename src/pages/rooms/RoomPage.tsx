@@ -358,7 +358,7 @@ const RoomPage: React.FC = () => {
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
-          width: "30%",
+          width: "50%",
           overflowY: "auto",
         }}
       >
@@ -369,7 +369,7 @@ const RoomPage: React.FC = () => {
               autoPlay
               playsInline
               muted
-              style={{ width: "100%", height: "100%" }}
+              style={{ width: "100%", height: "100%", transform: "scaleX(-1)" }}
             />
           )}
         </div>
@@ -401,14 +401,14 @@ const RoomPage: React.FC = () => {
           </button>
         </section>
       </div>
-      <div className="flex-grow mx-4">
+      {/* <div className="flex-grow mx-4">
         {selectedUser && remoteStreams[selectedUser] && (
           <div style={{ width: "100%", height: "100%" }}>
             <RemoteVideo stream={remoteStreams[selectedUser]} />
           </div>
         )}
-      </div>
-      <div className="flex flex-col">
+      </div> */}
+      <div className="flex flex-col w-3/12 ml-12">
         <div id="chat-container" className="flex-grow p-4 overflow-auto">
           {messages.map((message, index) => (
             <div
@@ -471,7 +471,7 @@ const RemoteVideo: React.FC<{ stream: MediaStream }> = ({ stream }) => {
       ref={videoRef}
       autoPlay
       playsInline
-      style={{ width: "100%", height: "100%" }}
+      style={{ width: "100%", height: "100%", transform: "scaleX(-1)" }}
     />
   );
 };
