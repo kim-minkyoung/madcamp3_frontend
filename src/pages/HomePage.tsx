@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import TabBar from "../components/TabBar";
 import "bootstrap/dist/css/bootstrap.min.css"; // Bootstrap CSS 가져오기
+import {User, UserService} from "../services/UserService";
 
 const HomePage: React.FC = () => {
   const navigate = useNavigate();
@@ -9,6 +10,20 @@ const HomePage: React.FC = () => {
   const [activeTabId, setActiveTabId] = useState(
     location.pathname.split("/")[1] || "main"
   );
+
+  useEffect(() => {
+    const userServiceInstance = new UserService();
+    const fetchUsers = async () => {
+      try {
+        const usersData = await userServiceInstance.getAllUsersRanking();
+        console.log("Users data:", usersData);
+      } catch (error) {
+        console.error("Failed to fetch users:", error);
+      }
+    }
+    fetchUsers();
+  }, []);
+
 
   useEffect(() => {
     setActiveTabId(location.pathname.split("/")[1] || "main");
