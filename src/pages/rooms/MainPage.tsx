@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import LoadingSpinner from "../../components/LoadingSpinner";
 import RoomList from "../../components/RoomList";
-import { Room, fetchRooms } from "../../services/RoomService"; // RoomService import
+import { Room, getAllOpenRooms } from "../../services/RoomService"; // RoomService import
 
 const MainPage: React.FC = () => {
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -15,7 +15,7 @@ const MainPage: React.FC = () => {
     const loadRooms = async () => {
       setLoading(true);
       try {
-        const data = await fetchRooms();
+        const data = await getAllOpenRooms();
         setRooms(data);
       } catch (error) {
         console.error("Failed to fetch rooms:", error);
