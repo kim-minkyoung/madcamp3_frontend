@@ -324,17 +324,27 @@ const RoomPage: React.FC = () => {
 
   return (
     <div style={{ display: "flex", flexDirection: "row", height: "80vh" }}>
-      <div className="p-4">
-        <h3 className="mb-4 text-lg font-semibold">예약된 곡 목록</h3>
-        <ul>
-          <li onClick={() => setShowReservedSongs(!showReservedSongs)}>
-            anne marie 2002
-          </li>
-          <li onClick={() => setShowReservedSongs(!showReservedSongs)}>
-            adele hello
-          </li>
-          <li onClick={() => setShowReservedSongs(!showReservedSongs)}>
-            doja cat streets
+      <div className="w-3/12 mr-14">
+        <ul role="list" className="divide-y ">
+          <li className="py-3 sm:py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <img
+                  className="w-8 h-8 rounded-full"
+                  src="https://flowbite.com/docs/images/people/profile-picture-1.jpg"
+                  alt="Neil image"
+                />
+                <div className="grid grid-rows-2 gap-y-1">
+                  <span className="text-sm font-medium text-gray-900">
+                    Neil Sims
+                  </span>
+                  <span className="text-sm text-gray-500">
+                    팔로워: 100, 팔로잉: 100
+                  </span>
+                </div>
+              </div>
+              <div className="text-base font-semibold text-gray-900">100점</div>
+            </div>
           </li>
         </ul>
       </div>
@@ -357,9 +367,18 @@ const RoomPage: React.FC = () => {
             />
           )}
         </div>
-        <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center" }}>
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            justifyContent: "center",
+          }}
+        >
           {Object.keys(remoteStreams).map((id) => (
-            <div key={id} style={{ width: "100px", height: "100px", margin: "5px" }}>
+            <div
+              key={id}
+              style={{ width: "100px", height: "100px", margin: "5px" }}
+            >
               <RemoteVideo stream={remoteStreams[id]} />
             </div>
           ))}
@@ -400,7 +419,7 @@ const RoomPage: React.FC = () => {
                 />
               )}
               <div
-                className={`py-3 px-4 rounded-3xl text-white ${
+                className={`mx-2 py-2 px-3 rounded-3xl text-white ${
                   message.sender === "Me" ? "bg-blue-400" : "bg-gray-400"
                 } ml-2`}
               >

@@ -6,6 +6,7 @@ import LoadingSpinner from "../../components/LoadingSpinner";
 import RoomList from "../../components/RoomList";
 import { Room, RoomService } from "../../services/RoomService"; // RoomService import
 
+
 const MainPage: React.FC = () => {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);

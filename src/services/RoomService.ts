@@ -1,3 +1,4 @@
+
 import axios from 'axios';
 import {User} from './UserService';
 
@@ -8,6 +9,7 @@ export interface Room {
   title: string;
   sub_title: string;
   rank_mode: boolean;
+
   open: boolean;
   created_at: string;
   category: string;
