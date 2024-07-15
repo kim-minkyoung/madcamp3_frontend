@@ -1,5 +1,3 @@
-// services/RoomService.ts
-
 export interface Room {
   id: number;
   name: string;
