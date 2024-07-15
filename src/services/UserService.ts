@@ -30,6 +30,14 @@ export class UserService {
   // 개별 유저 정보 조회
   async getUserInfo(userId: string): Promise<User> {
     const response = await axios.get(`${API_BASE_URL}/user/${userId}`);
+    const user: User = {
+      user_id: response.data.user_id,
+      user_name: response.data.user_name,
+      user_image: response.data.user_image,
+      user_gender: response.data.user_gender,
+      bio: response.data.bio,
+      total_score: response.data.total_score,
+    };
     return response.data;
   }
 

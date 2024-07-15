@@ -4,7 +4,8 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import LoadingSpinner from "../../components/LoadingSpinner";
 import RoomList from "../../components/RoomList";
-import { Room, getAllOpenRooms } from "../../services/RoomService"; // RoomService import
+import { Room, RoomService } from "../../services/RoomService"; // RoomService import
+
 
 const MainPage: React.FC = () => {
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -15,7 +16,8 @@ const MainPage: React.FC = () => {
     const loadRooms = async () => {
       setLoading(true);
       try {
-        const data = await getAllOpenRooms();
+        const roomServiceInterface = new RoomService(); // RoomService 인터페이스 생성
+        const data = await roomServiceInterface.getAllOpenRooms();
         setRooms(data);
       } catch (error) {
         console.error("Failed to fetch rooms:", error);

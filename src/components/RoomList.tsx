@@ -23,6 +23,7 @@ const RoomListItem: React.FC<{
   </div>
 );
 
+
 interface RoomListProps {
   rooms: Room[];
   onRoomClick: (roomId: number) => void;
@@ -55,12 +56,13 @@ const getIconForCategory = (category: string) => {
 const RoomList: React.FC<RoomListProps> = ({ rooms, onRoomClick }) => (
   <div className="grid grid-cols-4 gap-4">
     {rooms.map((room: Room) => (
-      <RoomListItem key={room.id} onClick={() => onRoomClick(room.id)}>
+
+      <RoomListItem key={room.room_id} onClick={() => onRoomClick(room.room_id)}>
         <div className="items-center">
           <div className="mr-3">{getIconForCategory(room.category)}</div>
           <div>
-            <h3 className="mb-2 text-xl font-semibold">{room.name}</h3>
-            <p className="text-gray-700">{room.description}</p>
+            <h3 className="mb-2 text-xl font-semibold">{room.title}</h3>
+            <p className="text-gray-700">{room.sub_title}</p>
             <p className="text-gray-700">{room.category}</p>
           </div>
           <div
