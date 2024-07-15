@@ -20,14 +20,13 @@ const RoomPage: React.FC = () => {
     []
   );
   const [inputMessage, setInputMessage] = useState("");
-  const userId = useRef<string>(Math.random().toString(36).substring(7));
+  const userId = useRef<string>(localStorage.getItem("userId") || "");
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
   const iceCandidatesQueue = useRef<{ [id: string]: RTCIceCandidateInit[] }>(
     {}
   ).current;
 
   const [showReservedSongs, setShowReservedSongs] = useState(false); // 예약된 곡 목록 보기 상태
-  const [searchedVideoId, setSearchedVideoId] = useState<string | null>(null); // 검색된 유튜브 영상 ID
 
   const createPeerConnection = useCallback(
     (id: string) => {
@@ -139,7 +138,7 @@ const RoomPage: React.FC = () => {
           message.action === "user-joined" &&
           message.userId !== userId.current
         ) {
-          console.log("User joined:", message.userId);
+          console.log("User joined", message.userId);
 
           // PeerConnection 생성
           const peerConnection = createPeerConnection(message.userId);
@@ -316,66 +315,38 @@ const RoomPage: React.FC = () => {
     setSelectedUser(userId);
   };
 
-  const handleShowReservedSongs = async (song: string) => {
-    setShowReservedSongs(!showReservedSongs); // 예약된 곡 목록 보기 토글
-
-    // 노래방 키워드 추가하여 YouTube에서 검색
-    const keyword = `${song} Musisi Karaoke`;
-
-    try {
-      const response = await fetch(
-        `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=1&q=${encodeURIComponent(
-          keyword
-        )}&key=${process.env.REACT_APP_YOUTUBE_API_KEY}`
-      );
-      if (!response.ok) {
-        throw new Error("Failed to fetch YouTube search results.");
-      }
-      const data = await response.json();
-      const videoId = data.items[0]?.id?.videoId;
-
-      if (videoId) {
-        setSearchedVideoId(videoId);
-      } else {
-        console.error("No video found for the search query.");
-      }
-    } catch (error) {
-      console.error("Error fetching YouTube search results:", error);
+  useEffect(() => {
+    const chatContainer = document.getElementById("chat-container");
+    if (chatContainer) {
+      chatContainer.scrollTop = chatContainer.scrollHeight;
     }
-  };
+  }, [messages]);
 
   return (
     <div style={{ display: "flex", flexDirection: "row", height: "80vh" }}>
       <div className="p-4">
         <h3 className="mb-4 text-lg font-semibold">예약된 곡 목록</h3>
         <ul>
-          <ul>
-            <li onClick={() => handleShowReservedSongs("anne marie 2002")}>
-              anne marie 2002
-            </li>
-            <li onClick={() => handleShowReservedSongs("adele hello")}>
-              adele hello
-            </li>
-            <li onClick={() => handleShowReservedSongs("doja cat streets")}>
-              doja cat streets
-            </li>
-          </ul>
+          <li onClick={() => setShowReservedSongs(!showReservedSongs)}>
+            anne marie 2002
+          </li>
+          <li onClick={() => setShowReservedSongs(!showReservedSongs)}>
+            adele hello
+          </li>
+          <li onClick={() => setShowReservedSongs(!showReservedSongs)}>
+            doja cat streets
+          </li>
         </ul>
       </div>
       <div
         style={{
+          display: "flex",
           flexDirection: "column",
           alignItems: "center",
-          width: "15%",
+          width: "30%",
         }}
       >
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            flex: 1,
-          }}
-        >
+        <div style={{ flex: 1 }}>
           {localStream && (
             <video
               ref={localVideoRef}
@@ -385,17 +356,12 @@ const RoomPage: React.FC = () => {
               style={{ width: "100%", height: "100%" }}
             />
           )}
-          {selectedUser && remoteStreams[selectedUser] && (
-            <div style={{ width: "100%", height: "100%" }}>
-              <RemoteVideo stream={remoteStreams[selectedUser]} />
-            </div>
-          )}
         </div>
-        <div>
+        <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center" }}>
           {Object.keys(remoteStreams).map((id) => (
-            <button key={id} onClick={() => handleUserSelect(id)}>
-              Show User {id}
-            </button>
+            <div key={id} style={{ width: "100px", height: "100px", margin: "5px" }}>
+              <RemoteVideo stream={remoteStreams[id]} />
+            </div>
           ))}
         </div>
         <section className="flex flex-col py-4">
@@ -405,30 +371,20 @@ const RoomPage: React.FC = () => {
           <button className="p-2 mb-2 text-white bg-blue-500 rounded hover:bg-blue-600">
             미러볼
           </button>
-          <button
-            className="p-2 mb-2 text-white bg-blue-500 rounded hover:bg-blue-600"
-            // onClick={handleShowReservedSongs}
-          >
+          <button className="p-2 mb-2 text-white bg-blue-500 rounded hover:bg-blue-600">
             노래 끝내기
           </button>
         </section>
       </div>
       <div className="flex-grow mx-4">
-        {/* 검색된 유튜브 영상을 표시하는 부분 */}
-        {searchedVideoId && (
-          <iframe
-            width="100%"
-            height="100%"
-            src={`https://www.youtube.com/embed/${searchedVideoId}`}
-            frameBorder="0"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-            title="YouTube video"
-          />
+        {selectedUser && remoteStreams[selectedUser] && (
+          <div style={{ width: "100%", height: "100%" }}>
+            <RemoteVideo stream={remoteStreams[selectedUser]} />
+          </div>
         )}
       </div>
       <div className="flex flex-col">
-        <div className="flex-grow p-4 overflow-auto">
+        <div id="chat-container" className="flex-grow p-4 overflow-auto">
           {messages.map((message, index) => (
             <div
               key={index}
@@ -460,7 +416,6 @@ const RoomPage: React.FC = () => {
             </div>
           ))}
         </div>
-        {/* 메시지 입력창 */}
         <div className="p-4 bg-gray-300">
           <input
             className="w-full px-3 py-2 rounded-xl"
@@ -497,5 +452,3 @@ const RemoteVideo: React.FC<{ stream: MediaStream }> = ({ stream }) => {
 };
 
 export default RoomPage;
-
-// 여기서 유튜브를 재생하면 내가 재생하는 영상과 소리가 다른 사람에게도 동일하게 보였으면 좋겠어
