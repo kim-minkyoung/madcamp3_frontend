@@ -6,6 +6,7 @@ import {
   handleCandidate,
   handleUserLeft,
 } from "./handlers";
+import "../../index.css";
 
 const RoomPage: React.FC = () => {
   const { roomId } = useParams<{ roomId: string }>();
@@ -26,7 +27,20 @@ const RoomPage: React.FC = () => {
     {}
   ).current;
 
-  const [showReservedSongs, setShowReservedSongs] = useState(false); // 예약된 곡 목록 보기 상태
+  const [showMirrorball, setShowMirrorball] = useState(false);
+  const [showClapEffect, setShowClapEffect] = useState(false);
+
+  const playClapSound = () => {
+    const clapAudio = new Audio("../../../public/clapSound.mp3");
+    clapAudio.play();
+    setShowClapEffect(true);
+    setTimeout(() => setShowClapEffect(false), 1000); // Hide after 1 second
+  };
+
+  const handleMirrorball = () => {
+    setShowMirrorball(true);
+    setTimeout(() => setShowMirrorball(false), 3000); // Hide after 5 seconds
+  };
 
   const createPeerConnection = useCallback(
     (id: string) => {
@@ -372,6 +386,9 @@ const RoomPage: React.FC = () => {
               style={{ width: "100%", height: "100%", transform: "scaleX(-1)" }}
             />
           )}
+          {showClapEffect && (
+            <div className="clap-effect">👏</div> // 간단한 박수 효과
+          )}
         </div>
         <div
           style={{
@@ -389,25 +406,31 @@ const RoomPage: React.FC = () => {
             </div>
           ))}
         </div>
-        <section className="flex flex-col py-4">
-          <button className="p-2 mb-2 text-white bg-blue-500 rounded hover:bg-blue-600">
-            박수
-          </button>
-          <button className="p-2 mb-2 text-white bg-blue-500 rounded hover:bg-blue-600">
-            미러볼
-          </button>
-          <button className="p-2 mb-2 text-white bg-blue-500 rounded hover:bg-blue-600">
-            노래 끝내기
-          </button>
+        <section className="flex">
+          <div className="flex flex-wrap justify-center">
+            <button
+              className="p-3 mx-2 mb-3 text-white transition duration-300 transform bg-purple-600 rounded-lg shadow-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-50 hover:rotate-12"
+              onClick={playClapSound}
+            >
+              👏 박수 👏
+            </button>
+            <button
+              className="p-3 mx-2 mb-3 text-white transition duration-300 transform bg-pink-600 rounded-lg shadow-md hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-opacity-50 hover:rotate-12"
+              onClick={handleMirrorball}
+            >
+              🕺 미러볼 🕺
+            </button>
+            <button className="p-3 mx-2 mb-3 text-white transition duration-300 transform bg-blue-600 rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 hover:scale-105">
+              🎤 자랑 끝내기 🎤
+            </button>
+          </div>
         </section>
-      </div>
-      {/* <div className="flex-grow mx-4">
-        {selectedUser && remoteStreams[selectedUser] && (
-          <div style={{ width: "100%", height: "100%" }}>
-            <RemoteVideo stream={remoteStreams[selectedUser]} />
+        {showMirrorball && (
+          <div className="mirrorball">
+            <img src="/path/to/mirrorball.gif" alt="Mirrorball" />
           </div>
         )}
-      </div> */}
+      </div>
       <div className="flex flex-col w-3/12 ml-12">
         <div id="chat-container" className="flex-grow p-4 overflow-auto">
           {messages.map((message, index) => (
