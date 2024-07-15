@@ -15,6 +15,7 @@ const HomePage: React.FC = () => {
     setActiveTabId(location.pathname.split("/")[1] || "main");
   }, [location.pathname]);
 
+
   useEffect(() => {
     const userId = localStorage.getItem('userId');
     setIsLoggedIn(!!userId); // userId가 존재하면 true, 그렇지 않으면 false
