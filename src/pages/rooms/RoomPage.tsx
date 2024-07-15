@@ -27,10 +27,11 @@ const RoomPage: React.FC = () => {
   ).current;
 
   const [showReservedSongs, setShowReservedSongs] = useState(false); // 예약된 곡 목록 보기 상태
+  const [searchedVideoId, setSearchedVideoId] = useState<string | null>(null); // 검색된 유튜브 영상 ID
 
-  const handleShowReservedSongs = () => {
-    setShowReservedSongs(!showReservedSongs); // 예약된 곡 목록 보기 토글
-  };
+  // const handleShowReservedSongs = () => {
+  //   setShowReservedSongs(!showReservedSongs); // 예약된 곡 목록 보기 토글
+  // };
 
   const createPeerConnection = useCallback(
     (id: string) => {
@@ -319,14 +320,50 @@ const RoomPage: React.FC = () => {
     setSelectedUser(userId);
   };
 
+  const handleShowReservedSongs = async (song: string) => {
+    setShowReservedSongs(!showReservedSongs); // 예약된 곡 목록 보기 토글
+
+    // 노래방 키워드 추가하여 YouTube에서 검색
+    const keyword = `${song} Musisi Karaoke`;
+
+    try {
+      const response = await fetch(
+        `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=1&q=${encodeURIComponent(
+          keyword
+        )}&key=${process.env.REACT_APP_YOUTUBE_API_KEY}`
+      );
+      if (!response.ok) {
+        throw new Error("Failed to fetch YouTube search results.");
+      }
+      const data = await response.json();
+      const videoId = data.items[0]?.id?.videoId;
+
+      if (videoId) {
+        setSearchedVideoId(videoId);
+      } else {
+        console.error("No video found for the search query.");
+      }
+    } catch (error) {
+      console.error("Error fetching YouTube search results:", error);
+    }
+  };
+
   return (
     <div style={{ display: "flex", flexDirection: "row", height: "80vh" }}>
       <div className="p-4">
         <h3 className="mb-4 text-lg font-semibold">예약된 곡 목록</h3>
         <ul>
-          <li>곡 1</li>
-          <li>곡 2</li>
-          <li>곡 3</li>
+          <ul>
+            <li onClick={() => handleShowReservedSongs("anne marie 2002")}>
+              anne marie 2002
+            </li>
+            <li onClick={() => handleShowReservedSongs("adele hello")}>
+              adele hello
+            </li>
+            <li onClick={() => handleShowReservedSongs("doja cat streets")}>
+              doja cat streets
+            </li>
+          </ul>
         </ul>
       </div>
       <div
@@ -374,23 +411,25 @@ const RoomPage: React.FC = () => {
           </button>
           <button
             className="p-2 mb-2 text-white bg-blue-500 rounded hover:bg-blue-600"
-            onClick={handleShowReservedSongs}
+            // onClick={handleShowReservedSongs}
           >
             노래 끝내기
           </button>
         </section>
       </div>
       <div className="flex-grow mx-4">
-        {/* 여기에 유튜브 영상을 넣습니다 */}
-        <iframe
-          width="100%"
-          height="100%"
-          src="https://www.youtube.com/embed/dQw4w9WgXcQ"
-          frameBorder="0"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowFullScreen
-          title="YouTube video"
-        />
+        {/* 검색된 유튜브 영상을 표시하는 부분 */}
+        {searchedVideoId && (
+          <iframe
+            width="100%"
+            height="100%"
+            src={`https://www.youtube.com/embed/${searchedVideoId}`}
+            frameBorder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+            title="YouTube video"
+          />
+        )}
       </div>
       <div className="flex flex-col">
         <div className="flex-grow p-4 overflow-auto">
