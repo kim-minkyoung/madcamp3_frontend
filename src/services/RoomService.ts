@@ -9,7 +9,6 @@ export interface Room {
   title: string;
   sub_title: string;
   rank_mode: boolean;
-
   open: boolean;
   created_at: string;
   category: string;
@@ -38,10 +37,11 @@ export class RoomService {
     };
   }
 
-  async createRoom(room: Partial<Room>): Promise<Room|null> {
+  async createRoom(room: Partial<Room>): Promise<string|null> {
     try {
+      console.log(`${API_BASE_URL}/room`);
       const response = await axios.post(`${API_BASE_URL}/room`, room);
-      return response.data;
+      return response.data.room_id;
     
     } catch (error) {
       console.error("Error creating room:", error);

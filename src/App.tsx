@@ -11,6 +11,7 @@ import RoomPage from "./pages/rooms/RoomPage";
 import PeoplePage from "./pages/PeoplePage";
 import MyPage from "./pages/MyPage";
 import Redirection from "./pages/Redirection";
+import CreateRoomPage from "./pages/rooms/CreateRoomPage";
 
 const App: React.FC = () => {
   return (
@@ -18,6 +19,7 @@ const App: React.FC = () => {
       <Routes>
         <Route path="/" element={<HomePage />}>
           <Route path="kakao/callback" element={<Redirection />} />
+          <Route path="create-room" element={<CreateRoomPage />} />
           <Route index element={<Navigate to="/main" />} />
           <Route path="main" element={<MainPage />} />
           <Route path="/room/:roomId" element={<RoomPage />} />
