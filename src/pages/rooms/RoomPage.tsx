@@ -7,8 +7,8 @@ import {
   handleUserLeft,
 } from "./handlers";
 import "../../index.css";
-import {Room, RoomService} from "../../services/RoomService";
-import {User, UserService} from "../../services/UserService";
+import { Room, RoomService } from "../../services/RoomService";
+import { User, UserService } from "../../services/UserService";
 
 const RoomPage: React.FC = () => {
   const { roomId } = useParams<{ roomId: string }>() as { roomId: string };
@@ -28,15 +28,26 @@ const RoomPage: React.FC = () => {
   const iceCandidatesQueue = useRef<{ [id: string]: RTCIceCandidateInit[] }>(
     {}
   ).current;
-
-  const roomService = new RoomService();
+  
+  const roomService = new RoomService()
   const userService = new UserService();
-  const [roomUsers, setRoomUsers] = useState<User[]>([]);
-  const ownerId = roomService.getRoomById(parseInt(roomId)).then((room) => room?.owner_id);
 
   const [showClapEffect, setShowClapEffect] = useState(false);
   const [showMirrorball, setShowMirrorball] = useState(false);
   const [showBlinkEffect, setShowBlinkEffect] = useState(false);
+  const [ownerId, setOwnerId] = useState<string | null>(null);
+  const [roomUsers, setRoomUsers] = useState<User[]>([]);
+
+  useEffect(() => {
+    const fetchOwner = async () => {
+      const room = await roomService.getRoomById(parseInt(roomId));
+      if (room) {
+        setOwnerId(room.owner_id);
+      }
+    };
+    fetchOwner();
+    console.log("Owner ID:", ownerId, "User ID:", userId.current);
+  }, []);
 
   const playClapSound = () => {
     const clapAudio = new Audio('/clapSound.mp3');
@@ -71,6 +82,18 @@ const RoomPage: React.FC = () => {
       webSocketRef.current.send(
         JSON.stringify({
           action: "mirrorball",
+          roomId,
+          userId: userId.current,
+        })
+      );
+    }
+  }
+
+  const handleStart = async () => {
+    if (webSocketRef.current?.readyState === WebSocket.OPEN) {
+      webSocketRef.current.send(
+        JSON.stringify({
+          action: "start",
           roomId,
           userId: userId.current,
         })
@@ -286,6 +309,11 @@ const RoomPage: React.FC = () => {
         if (message.action === "mirrorball") {
           handleMirrorball();
         }
+        
+        if (message.action === "start") {
+          const users = await roomService.getAllUsersInRoom(parseInt(roomId));
+          setSelectedUser(userId?.current);
+        }
       } catch (error) {
         console.error("Error parsing JSON:", error);
       }
@@ -293,7 +321,7 @@ const RoomPage: React.FC = () => {
 
     socket.onclose = async () => {
       console.log("WebSocket disconnected");
-      await roomService.deleteUserInRoom(parseInt(roomId), userId.current)
+      await roomService.deleteUserInRoom(parseInt(roomId), userId.current);
       handleSetRoom();
       webSocketRef.current?.send(
         JSON.stringify({
@@ -302,11 +330,7 @@ const RoomPage: React.FC = () => {
           userId: userId.current,
         })
       );
-      handleUserLeft(
-        userId.current,
-        peerConnectionsRef.current,
-        setRemoteStreams
-      );
+      handleUserLeft(userId.current, peerConnectionsRef.current, setRemoteStreams);
     };
 
     socket.onerror = (error) => {
@@ -326,7 +350,7 @@ const RoomPage: React.FC = () => {
         webSocketRef.current.close();
       }
     };
-  }, [roomId, createPeerConnection, localStream, iceCandidatesQueue]);
+  }, [roomId, createPeerConnection, localStream, iceCandidatesQueue, roomUsers]);
 
   useEffect(() => {
     // Clean up on page unload
@@ -399,89 +423,77 @@ const RoomPage: React.FC = () => {
     <div className={`w-full h-screen ${showBlinkEffect ? 'animate-blink' : ''}`}>
       <div style={{ display: "flex", flexDirection: "row", height: "80vh" }}>
         <div className="w-3/12 overflow-y-auto mr-14">
-        <ul role="list" className="divide-y">
-          {roomUsers.map((user) => (
-            <li key={user.user_id} className="py-3 sm:py-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <img
-                    className="w-10 h-10 rounded-full"
-                    src={user.user_image||"https://previews.123rf.com/images/kurhan/kurhan1704/kurhan170400964/76701347-%ED%96%89%EB%B3%B5%ED%95%9C-%EC%82%AC%EB%9E%8C-%EC%96%BC%EA%B5%B4.jpg"}
-                    alt={`${user.user_name} image`}
-                  />
-                  <div className="grid grid-rows-2 gap-y-1">
-                    <span className="text-sm font-medium text-gray-900">
-                      {user.user_name}
-                    </span>
+          <ul role="list" className="divide-y">
+            {roomUsers.map((user) => (
+              <li key={user.user_id} className="py-3 sm:py-4" onClick={() => handleUserSelect(user.user_id)}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                    <img
+                      className="w-10 h-10 rounded-full"
+                      src={user.user_image || "https://previews.123rf.com/images/kurhan/kurhan1704/kurhan170400964/76701347-%ED%96%89%EB%B3%B5%ED%95%9C-%EC%82%AC%EB%9E%8C-%EC%96%BC%EA%B5%B4.jpg"}
+                      alt={`${user.user_name} image`}
+                    />
+                    <div className="grid grid-rows-2 gap-y-1">
+                      <span className="text-sm font-medium text-gray-900">
+                        {user.user_name}
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </li>
-          ))}
-        </ul>
+              </li>
+            ))}
+          </ul>
         </div>
-
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            width: "50%",
-            overflowY: "auto",
-          }}
-        >
-          <div style={{ flex: 1 }}>
-            {localStream && (
-              <video
-                ref={localVideoRef}
-                autoPlay
-                playsInline
-                muted
-                style={{ width: "100%", height: "100%", transform: "scaleX(-1)" }}
-              />
-            )}
-            {showClapEffect && (
-              <div className="clap-effect">👏</div> // 간단한 박수 효과
-            )}
-          </div>
+  
+        {selectedUser === null ? (
           <div
             style={{
               display: "flex",
-              flexWrap: "wrap",
-              justifyContent: "center",
+              flexDirection: "column",
+              alignItems: "center",
+              width: "50%",
+              overflowY: "auto",
             }}
           >
-            {Object.keys(remoteStreams).map((id) => (
-              <div
-                key={id}
-                style={{ width: "100px", height: "100px", margin: "5px" }}
+            {userId.current === ownerId ? (
+              <button 
+                className="p-4 text-white bg-blue-600 rounded" 
+                onClick={handleStart}
               >
-                <RemoteVideo stream={remoteStreams[id]} />
-              </div>
-            ))}
+                방 시작
+              </button>
+            ) : (
+              <div className="text-xl text-gray-700">곧 시작할 예정입니다.</div>
+            )}
           </div>
-          <section className="flex">
-            <div className="flex flex-wrap justify-center">
-              <button
-                className="p-3 mx-2 mb-3 text-white transition duration-300 transform bg-purple-600 rounded-lg shadow-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-50 hover:rotate-12"
-                onClick={sendClap}
-              >
-                👏 박수 👏
-              </button>
-              <button
-                className="p-3 mx-2 mb-3 text-white transition duration-300 transform bg-pink-600 rounded-lg shadow-md hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-opacity-50 hover:rotate-12"
-                onClick={sendMirrorball}
-              >
-                🕺 미러볼 🕺
-              </button>
-              <button className="p-3 mx-2 mb-3 text-white transition duration-300 transform bg-blue-600 rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 hover:scale-105">
-                🎤 자랑 끝내기 🎤
-              </button>
+        ) : (
+          <div className="flex-grow flex">
+            <div className="flex flex-col w-1/4 overflow-y-auto">
+              {Object.keys(remoteStreams).map((id) => (
+                id !== selectedUser && (
+                  <div key={id} className="p-2">
+                    <RemoteVideo stream={remoteStreams[id]} />
+                  </div>
+                )
+              ))}
             </div>
-          </section>
-        </div>
+            <div className="flex-grow flex justify-center items-center">
+              {selectedUser === userId.current || userId.current === ownerId ? (
+                <div>
+                  <RemoteVideo stream={remoteStreams[selectedUser]} />
+                  <button className="p-4 text-white bg-red-600 rounded mt-4">
+                    🎤 자랑 끝내기 🎤
+                  </button>
+                </div>
+              ) : (
+                <RemoteVideo stream={remoteStreams[selectedUser]} />
+              )}
+            </div>
+          </div>
+        )}
+  
         <div className="flex flex-col w-3/12 ml-12">
-          <div id="chat-container" className="flex-grow p-4 overflow-auto">
+        <div id="chat-container" className="flex-grow p-4 overflow-auto">
             {messages.map((message, index) => (
               <div
                 key={index}
@@ -525,8 +537,27 @@ const RoomPage: React.FC = () => {
           </div>
         </div>
       </div>
+  
+      <div className="flex flex-wrap justify-center mt-4">
+        {selectedUser === null || (selectedUser !== userId.current && userId.current !== ownerId) ? (
+          <>
+            <button
+              className="p-3 mx-2 mb-3 text-white transition duration-300 transform bg-purple-600 rounded-lg shadow-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-50 hover:rotate-12"
+              onClick={sendClap}
+            >
+              👏 박수 👏
+            </button>
+            <button
+              className="p-3 mx-2 mb-3 text-white transition duration-300 transform bg-pink-600 rounded-lg shadow-md hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-opacity-50 hover:rotate-12"
+              onClick={sendMirrorball}
+            >
+              🕺 미러볼 🕺
+            </button>
+          </>
+        ) : null}
+      </div>
     </div>
-  );
+  );  
 };
 
 const RemoteVideo: React.FC<{ stream: MediaStream }> = ({ stream }) => {
