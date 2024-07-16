@@ -7,8 +7,8 @@ import {
   handleUserLeft,
 } from "./handlers";
 import "../../index.css";
-import {Room, RoomService} from "../../services/RoomService";
-import {User, UserService} from "../../services/UserService";
+import { Room, RoomService } from "../../services/RoomService";
+import { User, UserService } from "../../services/UserService";
 
 const RoomPage: React.FC = () => {
   const { roomId } = useParams<{ roomId: string }>() as { roomId: string };
@@ -32,14 +32,16 @@ const RoomPage: React.FC = () => {
   const roomService = new RoomService();
   const userService = new UserService();
   const [roomUsers, setRoomUsers] = useState<User[]>([]);
-  const ownerId = roomService.getRoomById(parseInt(roomId)).then((room) => room?.owner_id);
+  const ownerId = roomService
+    .getRoomById(parseInt(roomId))
+    .then((room) => room?.owner_id);
 
   const [showClapEffect, setShowClapEffect] = useState(false);
   const [showMirrorball, setShowMirrorball] = useState(false);
   const [showBlinkEffect, setShowBlinkEffect] = useState(false);
 
   const playClapSound = () => {
-    const clapAudio = new Audio('/clapSound.mp3');
+    const clapAudio = new Audio("/clapSound.mp3");
     clapAudio.play();
     setShowClapEffect(true);
     setTimeout(() => setShowClapEffect(false), 1000); // Hide after 1 second
@@ -76,7 +78,7 @@ const RoomPage: React.FC = () => {
         })
       );
     }
-  }
+  };
 
   const createPeerConnection = useCallback(
     (id: string) => {
@@ -137,7 +139,10 @@ const RoomPage: React.FC = () => {
   const handleSetRoom = async () => {
     const usersInRoom = await roomService.getAllUsersInRoom(parseInt(roomId));
     setRoomUsers(usersInRoom);
-    console.log("Users in room:", usersInRoom.map((user) => user.user_name));
+    console.log(
+      "Users in room:",
+      usersInRoom.map((user) => user.user_name)
+    );
   };
 
   useEffect(() => {
@@ -169,7 +174,6 @@ const RoomPage: React.FC = () => {
     if (webSocketRef.current) return;
     if (!roomId) return;
 
-    
     const socket = new WebSocket(
       "wss://e4w7206ka6.execute-api.ap-northeast-2.amazonaws.com/production"
     );
@@ -293,7 +297,7 @@ const RoomPage: React.FC = () => {
 
     socket.onclose = async () => {
       console.log("WebSocket disconnected");
-      await roomService.deleteUserInRoom(parseInt(roomId), userId.current)
+      await roomService.deleteUserInRoom(parseInt(roomId), userId.current);
       handleSetRoom();
       webSocketRef.current?.send(
         JSON.stringify({
@@ -396,29 +400,35 @@ const RoomPage: React.FC = () => {
   }, [messages]);
 
   return (
-    <div className={`w-full h-screen ${showBlinkEffect ? 'animate-blink' : ''}`}>
+    <div
+      className={`w-full h-screen ${showBlinkEffect ? "animate-blink" : ""}`}
+    >
       <div style={{ display: "flex", flexDirection: "row", height: "80vh" }}>
         <div className="w-3/12 overflow-y-auto mr-14">
-        <ul role="list" className="divide-y">
-          {roomUsers.map((user) => (
-            <li key={user.user_id} className="py-3 sm:py-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <img
-                    className="w-10 h-10 rounded-full"
-                    src={user.user_image||"https://previews.123rf.com/images/kurhan/kurhan1704/kurhan170400964/76701347-%ED%96%89%EB%B3%B5%ED%95%9C-%EC%82%AC%EB%9E%8C-%EC%96%BC%EA%B5%B4.jpg"}
-                    alt={`${user.user_name} image`}
-                  />
-                  <div className="grid grid-rows-2 gap-y-1">
-                    <span className="text-sm font-medium text-gray-900">
-                      {user.user_name}
-                    </span>
+          <ul role="list" className="divide-y">
+            {roomUsers.map((user) => (
+              <li key={user.user_id} className="py-3 sm:py-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                    <img
+                      className="w-10 h-10 rounded-full"
+                      style={{ objectFit: "cover" }}
+                      src={
+                        user.user_image ||
+                        "https://previews.123rf.com/images/kurhan/kurhan1704/kurhan170400964/76701347-%ED%96%89%EB%B3%B5%ED%95%9C-%EC%82%AC%EB%9E%8C-%EC%96%BC%EA%B5%B4.jpg"
+                      }
+                      alt={`${user.user_name} image`}
+                    />
+                    <div className="grid grid-rows-2 gap-y-1">
+                      <span className="text-sm font-medium text-gray-900">
+                        {user.user_name}
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </li>
-          ))}
-        </ul>
+              </li>
+            ))}
+          </ul>
         </div>
 
         <div
@@ -437,7 +447,11 @@ const RoomPage: React.FC = () => {
                 autoPlay
                 playsInline
                 muted
-                style={{ width: "100%", height: "100%", transform: "scaleX(-1)" }}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  transform: "scaleX(-1)",
+                }}
               />
             )}
             {showClapEffect && (
