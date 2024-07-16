@@ -31,10 +31,6 @@ const RoomPage: React.FC = () => {
   
   const roomService = new RoomService()
   const userService = new UserService();
-  const [roomUsers, setRoomUsers] = useState<User[]>([]);
-  const ownerId = roomService
-    .getRoomById(parseInt(roomId))
-    .then((room) => room?.owner_id);
 
   const [showClapEffect, setShowClapEffect] = useState(false);
   const [showMirrorball, setShowMirrorball] = useState(false);
