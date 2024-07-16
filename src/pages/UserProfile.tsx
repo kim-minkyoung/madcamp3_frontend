@@ -30,6 +30,9 @@ const UserProfile: React.FC<{
         const followings = await FriendService.getFollowings(user.user_id);
         setFollowersCount(followers.length);
         setFollowingCount(followings.length);
+
+        console.log("follower: ", user.followers);
+        console.log("following: ", user.following);
       } catch (error) {
         console.error("Error fetching follow counts:", error);
       }
@@ -40,7 +43,6 @@ const UserProfile: React.FC<{
 
   const handleFollowToggle = async () => {
     const { user_id: userId } = user;
-
     try {
       if (isFollowing) {
         // Unfollow the user

@@ -85,7 +85,7 @@ const Tab2: React.FC = () => {
                       {user.user_name}
                     </span>
                     <span className="text-sm text-gray-500 text-start">
-                      팔로워: {user.followers ?? 0}, 팔로잉:{" "}
+                      팔로워: {user.followers ?? 0}, 팔로잉:
                       {user.following ?? 0}
                     </span>
                   </div>
