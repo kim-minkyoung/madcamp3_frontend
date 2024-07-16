@@ -9,11 +9,30 @@ import {
   Tooltip,
   Legend,
 } from "chart.js";
-import userService, { User } from "../services/UserService";
+import { User } from "../services/UserService";
 import FriendService from "../services/FriendService";
-import { on } from "events";
+import Modal from "react-modal";
 
 Chart.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
+
+const customStyles = {
+  overlay: {
+    backgroundColor: "rgba(0, 0, 0, 0.75)",
+    zIndex: 1000,
+  },
+  content: {
+    top: "50%",
+    left: "50%",
+    right: "auto",
+    bottom: "auto",
+    marginRight: "-50%",
+    transform: "translate(-50%, -50%)",
+    borderRadius: "10px",
+    padding: "20px",
+    maxWidth: "500px",
+    width: "90%",
+  },
+};
 
 const UserProfile: React.FC<{
   user: User;
@@ -22,6 +41,10 @@ const UserProfile: React.FC<{
   const [isFollowing, setIsFollowing] = useState<boolean>(false);
   const [followersCount, setFollowersCount] = useState<number>(0);
   const [followingCount, setFollowingCount] = useState<number>(0);
+  const [followers, setFollowers] = useState<User[]>([]);
+  const [followings, setFollowings] = useState<User[]>([]);
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [modalContent, setModalContent] = useState<string>("");
   const userId = localStorage.getItem("userId") as string;
 
   useEffect(() => {
@@ -30,20 +53,21 @@ const UserProfile: React.FC<{
       try {
         const followers = await FriendService.getFollowers(user.user_id);
         const followings = await FriendService.getFollowings(user.user_id);
-        const isFollowing = await FriendService.checkFollowing(userId, user.user_id);
+        const isFollowing = await FriendService.checkFollowing(
+          userId,
+          user.user_id
+        );
         console.log(isFollowing);
         setIsFollowing(isFollowing);
         setFollowersCount(followers.length);
         setFollowingCount(followings.length);
-
-
       } catch (error) {
         console.error("Error fetching follow counts:", error);
       }
     };
 
     fetchFollowCounts();
-  }, [user.user_id]);
+  }, [user.user_id, userId]);
 
   const handleFollowToggle = async () => {
     try {
@@ -61,6 +85,28 @@ const UserProfile: React.FC<{
       onUpdateFollowers();
     } catch (error) {
       console.error("Error toggling follow:", error);
+    }
+  };
+
+  const handleFollowersClick = async () => {
+    try {
+      const followers = await FriendService.getFollowers(user.user_id);
+      setFollowers(followers);
+      setModalContent("followers");
+      setIsModalOpen(true);
+    } catch (error) {
+      console.error("Error fetching followers:", error);
+    }
+  };
+
+  const handleFollowingsClick = async () => {
+    try {
+      const followings = await FriendService.getFollowings(user.user_id);
+      setFollowings(followings);
+      setModalContent("followings");
+      setIsModalOpen(true);
+    } catch (error) {
+      console.error("Error fetching followings:", error);
     }
   };
 
@@ -130,7 +176,13 @@ const UserProfile: React.FC<{
             {user.user_name}
           </div>
           <div className="text-sm text-gray-500">
-            팔로워: {followersCount}, 팔로잉: {followingCount}
+            <span onClick={handleFollowersClick} style={{ cursor: "pointer" }}>
+              팔로워: {followersCount}
+            </span>
+            ,{" "}
+            <span onClick={handleFollowingsClick} style={{ cursor: "pointer" }}>
+              팔로잉: {followingCount}
+            </span>
           </div>
           <div className="text-sm text-gray-700">{user.bio}</div>
         </div>
@@ -161,6 +213,22 @@ const UserProfile: React.FC<{
           options={{ responsive: true, scales: { y: { beginAtZero: true } } }}
         />
       </div>
+
+      <Modal
+        isOpen={isModalOpen}
+        onRequestClose={() => setIsModalOpen(false)}
+        style={customStyles}
+      >
+        <h2>{modalContent === "followers" ? "팔로워 목록" : "팔로잉 목록"}</h2>
+        <ul>
+          {(modalContent === "followers" ? followers : followings).map(
+            (user) => (
+              <li key={user.user_id}>{user.user_name}</li>
+            )
+          )}
+        </ul>
+        <button onClick={() => setIsModalOpen(false)}>닫기</button>
+      </Modal>
     </div>
   );
 };
