@@ -28,8 +28,8 @@ const RoomPage: React.FC = () => {
   const iceCandidatesQueue = useRef<{ [id: string]: RTCIceCandidateInit[] }>(
     {}
   ).current;
-  
-  const roomService = new RoomService()
+
+  const roomService = new RoomService();
   const userService = new UserService();
 
   const [showClapEffect, setShowClapEffect] = useState(false);
@@ -99,7 +99,7 @@ const RoomPage: React.FC = () => {
         })
       );
     }
-  }
+  };
 
   const createPeerConnection = useCallback(
     (id: string) => {
@@ -157,17 +157,34 @@ const RoomPage: React.FC = () => {
     [localStream, roomId]
   );
 
-  const handleSetRoom = async () => {
-    const usersInRoom = await roomService.getAllUsersInRoom(parseInt(roomId))
-    setRoomUsers(usersInRoom);
-  };
+  // 사람 들어오고 나갈 때마다 roomUsers 바꿈
+  // const handleSetRoom = async () => {
+  //   const usersInRoom = await roomService.getAllUsersInRoom(parseInt(roomId));
+  //   setRoomUsers(usersInRoom);
+  //   // console.log("handleSetRoom roomUsers:", roomUsers);
+  //   return roomUsers;
+  // };
+  // // 여기서는 roomUsers가 정상적으로 update 됨을 확인할 수 있음
+  // // handleSetRoom().then((roomUsers) => {
+  // //   console.log("roomUsers after handleSetRoom:", roomUsers);
+  // // });
+  const handleSetRoom = useCallback(async () => {
+    try {
+      const usersInRoom = await roomService.getAllUsersInRoom(parseInt(roomId));
+      setRoomUsers(usersInRoom);
+      return usersInRoom;
+    } catch (error) {
+      console.error("Error fetching users in room:", error);
+      return [];
+    }
+  }, [roomId, roomService]);
 
   useEffect(() => {
     const init = async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           video: true,
-          audio: true, // TODO: Audio 설정
+          audio: true,
         });
         console.log("Local stream obtained:", stream);
         setLocalStream(stream);
@@ -182,25 +199,39 @@ const RoomPage: React.FC = () => {
         );
       }
     };
-  
+
     init();
   }, []);
-  
+
   useEffect(() => {
     if (!localStream) return; // Wait until localStream is set
     if (webSocketRef.current) return;
     if (!roomId) return;
-  
+
     const socket = new WebSocket(
       "wss://e4w7206ka6.execute-api.ap-northeast-2.amazonaws.com/production"
     );
     webSocketRef.current = socket;
-  
+
     socket.onopen = async () => {
       if (!roomUsers.find((user) => user.user_id === userId.current)) {
         await roomService.enterRoom(parseInt(roomId), userId.current);
       }
-      await handleSetRoom();
+      const updatedRoomUsers = await handleSetRoom();
+
+      setRoomUsers(updatedRoomUsers);
+      console.log("onopen user-joined roomUsers: ", roomUsers);
+      // TODO: 하지만 useEffect 문 내부에서 roomUsers를 찍어보면 빈 배열 나옴
+      // .then(() => {
+      //   // handleOffer 함수가 완료된 후에 실행될 코드
+      //   console.log("onopen user-joined roomUsers: ", roomUsers);
+      //   // 추가적인 작업 수행
+      // })
+      // .catch((error) => {
+      //   // handleOffer 함수 호출 중 에러 발생 시 처리
+      //   console.error("handleOffer failed:", error);
+      // });
+
       console.log("WebSocket connected");
       webSocketRef.current?.send(
         JSON.stringify({
@@ -210,25 +241,25 @@ const RoomPage: React.FC = () => {
         })
       );
     };
-  
+
     socket.onmessage = async (event) => {
       try {
         const message = JSON.parse(event.data);
         console.log("Received message:", message.action);
-  
+
         if (
           message.action === "user-joined" &&
           message.userId !== userId.current
         ) {
           console.log("User joined", message.userId);
-  
+
           // PeerConnection 생성
           const peerConnection = createPeerConnection(message.userId);
-  
+
           // 오퍼 생성 및 설정
           const offer = await peerConnection.createOffer();
           await peerConnection.setLocalDescription(offer);
-  
+
           // 오퍼 전송
           webSocketRef.current?.send(
             JSON.stringify({
@@ -239,11 +270,21 @@ const RoomPage: React.FC = () => {
               targetId: message.userId,
             })
           );
-  
+
           console.log("Creating offer for new user:", message.userId);
           await handleSetRoom(); // Fetch users after new user joins
+          // TODO
+          // .then(() => {
+          //   // handleOffer 함수가 완료된 후에 실행될 코드
+          //   console.log("onmessage user-joined roomUsers: ", roomUsers);
+          //   // 추가적인 작업 수행
+          // })
+          // .catch((error) => {
+          //   // handleOffer 함수 호출 중 에러 발생 시 처리
+          //   console.error("handleOffer failed:", error);
+          // });
         }
-  
+
         if (
           message.action === "chat-message" &&
           message.userId !== userId.current &&
@@ -251,9 +292,9 @@ const RoomPage: React.FC = () => {
         ) {
           handleChatMessage({ sender: "you", text: message.message.text });
         }
-  
+
         if (message.action === "offer" && message.userId !== userId.current) {
-          await handleOffer(
+          handleOffer(
             message.offer,
             message.userId,
             createPeerConnection,
@@ -262,8 +303,18 @@ const RoomPage: React.FC = () => {
             userId.current,
             iceCandidatesQueue
           );
+          // TODO
+          // .then(() => {
+          //   // handleOffer 함수가 완료된 후에 실행될 코드
+          //   console.log("handleOffer roomUsers: ", roomUsers);
+          //   // 추가적인 작업 수행
+          // })
+          // .catch((error) => {
+          //   // handleOffer 함수 호출 중 에러 발생 시 처리
+          //   console.error("handleOffer failed:", error);
+          // });
         }
-  
+
         if (message.action === "answer" && message.userId !== userId.current) {
           await handleAnswer(
             message.answer,
@@ -273,12 +324,13 @@ const RoomPage: React.FC = () => {
           );
           console.log("Received answer from user:", message.userId);
         }
-  
+
         if (
           message.action === "ice-candidate" &&
           message.userId !== userId.current
         ) {
-          console.log(peerConnectionsRef.current); // Debug: 확인용
+          // console.log(peerConnectionsRef.current); // Debug: 확인용
+          // console.log("ice-candidate roomUsers: ", roomUsers); //TODO
           await handleCandidate(
             message.candidate,
             message.userId,
@@ -286,7 +338,7 @@ const RoomPage: React.FC = () => {
             iceCandidatesQueue
           );
         }
-  
+
         if (
           message.action === "leave-room" &&
           message.userId !== userId.current
@@ -299,18 +351,18 @@ const RoomPage: React.FC = () => {
           );
           await handleSetRoom(); // Fetch users after a user leaves
         }
-  
+
         if (message.action === "clap") {
           playClapSound();
         }
-  
+
         if (message.action === "mirrorball") {
           handleMirrorball();
         }
-  
+
         if (message.action === "start") {
           if (!selectedUser) {
-            console.log(roomUsers);
+            console.log("onmessage roomUsers:", roomUsers);
             // setQueue(roomUsers);
             // setSelectedUser(roomUsers[0].user_id);
           }
@@ -319,7 +371,7 @@ const RoomPage: React.FC = () => {
         console.error("Error parsing JSON:", error);
       }
     };
-  
+
     socket.onclose = async () => {
       console.log("WebSocket disconnected");
       await roomService.deleteUserInRoom(parseInt(roomId), userId.current);
@@ -331,13 +383,17 @@ const RoomPage: React.FC = () => {
           userId: userId.current,
         })
       );
-      handleUserLeft(userId.current, peerConnectionsRef.current, setRemoteStreams);
+      handleUserLeft(
+        userId.current,
+        peerConnectionsRef.current,
+        setRemoteStreams
+      );
     };
-  
+
     socket.onerror = (error) => {
       console.error("WebSocket error:", error);
     };
-  
+
     return () => {
       // Clean up socket and connections
       if (webSocketRef.current?.readyState === WebSocket.OPEN) {
@@ -351,7 +407,13 @@ const RoomPage: React.FC = () => {
         webSocketRef.current.close();
       }
     };
-  }, [roomId, createPeerConnection, localStream, iceCandidatesQueue, roomUsers]);
+  }, [
+    roomId,
+    createPeerConnection,
+    localStream,
+    iceCandidatesQueue,
+    roomUsers,
+  ]);
 
   useEffect(() => {
     // Clean up on page unload
@@ -452,7 +514,7 @@ const RoomPage: React.FC = () => {
             ))}
           </ul>
         </div>
-  
+
         {selectedUser === null ? (
           <div
             style={{
@@ -464,8 +526,8 @@ const RoomPage: React.FC = () => {
             }}
           >
             {userId.current === ownerId ? (
-              <button 
-                className="p-4 text-white bg-blue-600 rounded" 
+              <button
+                className="p-4 text-white bg-blue-600 rounded"
                 onClick={handleStart}
               >
                 방 시작
@@ -475,21 +537,22 @@ const RoomPage: React.FC = () => {
             )}
           </div>
         ) : (
-          <div className="flex-grow flex">
+          <div className="flex flex-grow">
             <div className="flex flex-col w-1/4 overflow-y-auto">
-              {Object.keys(remoteStreams).map((id) => (
-                id !== selectedUser && (
-                  <div key={id} className="p-2">
-                    <RemoteVideo stream={remoteStreams[id]} />
-                  </div>
-                )
-              ))}
+              {Object.keys(remoteStreams).map(
+                (id) =>
+                  id !== selectedUser && (
+                    <div key={id} className="p-2">
+                      <RemoteVideo stream={remoteStreams[id]} />
+                    </div>
+                  )
+              )}
             </div>
-            <div className="flex-grow flex justify-center items-center">
+            <div className="flex items-center justify-center flex-grow">
               {selectedUser === userId.current || userId.current === ownerId ? (
                 <div>
                   <RemoteVideo stream={remoteStreams[selectedUser]} />
-                  <button className="p-4 text-white bg-red-600 rounded mt-4">
+                  <button className="p-4 mt-4 text-white bg-red-600 rounded">
                     🎤 자랑 끝내기 🎤
                   </button>
                 </div>
@@ -499,9 +562,9 @@ const RoomPage: React.FC = () => {
             </div>
           </div>
         )}
-  
+
         <div className="flex flex-col w-3/12 ml-12">
-        <div id="chat-container" className="flex-grow p-4 overflow-auto">
+          <div id="chat-container" className="flex-grow p-4 overflow-auto">
             {messages.map((message, index) => (
               <div
                 key={index}
@@ -545,9 +608,10 @@ const RoomPage: React.FC = () => {
           </div>
         </div>
       </div>
-  
+
       <div className="flex flex-wrap justify-center mt-4">
-        {selectedUser === null || (selectedUser !== userId.current && userId.current !== ownerId) ? (
+        {selectedUser === null ||
+        (selectedUser !== userId.current && userId.current !== ownerId) ? (
           <>
             <button
               className="p-3 mx-2 mb-3 text-white transition duration-300 transform bg-purple-600 rounded-lg shadow-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-50 hover:rotate-12"
@@ -565,7 +629,7 @@ const RoomPage: React.FC = () => {
         ) : null}
       </div>
     </div>
-  );  
+  );
 };
 
 const RemoteVideo: React.FC<{ stream: MediaStream }> = ({ stream }) => {

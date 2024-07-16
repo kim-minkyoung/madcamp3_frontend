@@ -42,7 +42,9 @@ export const handleAnswer = async (
   const peerConnection = peerConnections[senderId];
   if (peerConnection) {
     console.log("Received answer from user:", senderId);
-    await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+    await peerConnection.setRemoteDescription(
+      new RTCSessionDescription(answer)
+    );
 
     // 원격 설명이 설정된 후 대기열에 있는 ICE 후보를 추가
     if (iceCandidatesQueue[senderId]) {
@@ -78,7 +80,9 @@ export const handleCandidate = async (
 export const handleUserLeft = (
   userId: string,
   peerConnections: { [id: string]: RTCPeerConnection },
-  setRemoteStreams: React.Dispatch<React.SetStateAction<{ [id: string]: MediaStream }>>
+  setRemoteStreams: React.Dispatch<
+    React.SetStateAction<{ [id: string]: MediaStream }>
+  >
 ) => {
   // 상태에서 해당 유저의 스트림 제거
   setRemoteStreams((prevStreams) => {
