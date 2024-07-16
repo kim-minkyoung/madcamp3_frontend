@@ -37,6 +37,7 @@ const RoomPage: React.FC = () => {
   const [showBlinkEffect, setShowBlinkEffect] = useState(false);
   const [ownerId, setOwnerId] = useState<string | null>(null);
   const [roomUsers, setRoomUsers] = useState<User[]>([]);
+  const [queue, setQueue] = useState<User[]>([]);
 
   useEffect(() => {
     const fetchOwner = async () => {
@@ -46,7 +47,6 @@ const RoomPage: React.FC = () => {
       }
     };
     fetchOwner();
-    console.log("Owner ID:", ownerId, "User ID:", userId.current);
   }, []);
 
   const playClapSound = () => {
@@ -158,12 +158,8 @@ const RoomPage: React.FC = () => {
   );
 
   const handleSetRoom = async () => {
-    const usersInRoom = await roomService.getAllUsersInRoom(parseInt(roomId));
+    const usersInRoom = await roomService.getAllUsersInRoom(parseInt(roomId))
     setRoomUsers(usersInRoom);
-    console.log(
-      "Users in room:",
-      usersInRoom.map((user) => user.user_name)
-    );
   };
 
   useEffect(() => {
@@ -186,25 +182,25 @@ const RoomPage: React.FC = () => {
         );
       }
     };
-
+  
     init();
   }, []);
-
+  
   useEffect(() => {
     if (!localStream) return; // Wait until localStream is set
     if (webSocketRef.current) return;
     if (!roomId) return;
-
+  
     const socket = new WebSocket(
       "wss://e4w7206ka6.execute-api.ap-northeast-2.amazonaws.com/production"
     );
     webSocketRef.current = socket;
-
+  
     socket.onopen = async () => {
       if (!roomUsers.find((user) => user.user_id === userId.current)) {
         await roomService.enterRoom(parseInt(roomId), userId.current);
       }
-      handleSetRoom();
+      await handleSetRoom();
       console.log("WebSocket connected");
       webSocketRef.current?.send(
         JSON.stringify({
@@ -214,25 +210,25 @@ const RoomPage: React.FC = () => {
         })
       );
     };
-
+  
     socket.onmessage = async (event) => {
       try {
         const message = JSON.parse(event.data);
         console.log("Received message:", message.action);
-
+  
         if (
           message.action === "user-joined" &&
           message.userId !== userId.current
         ) {
           console.log("User joined", message.userId);
-
+  
           // PeerConnection 생성
           const peerConnection = createPeerConnection(message.userId);
-
+  
           // 오퍼 생성 및 설정
           const offer = await peerConnection.createOffer();
           await peerConnection.setLocalDescription(offer);
-
+  
           // 오퍼 전송
           webSocketRef.current?.send(
             JSON.stringify({
@@ -243,11 +239,11 @@ const RoomPage: React.FC = () => {
               targetId: message.userId,
             })
           );
-
+  
           console.log("Creating offer for new user:", message.userId);
-          handleSetRoom();
+          await handleSetRoom(); // Fetch users after new user joins
         }
-
+  
         if (
           message.action === "chat-message" &&
           message.userId !== userId.current &&
@@ -255,7 +251,7 @@ const RoomPage: React.FC = () => {
         ) {
           handleChatMessage({ sender: "you", text: message.message.text });
         }
-
+  
         if (message.action === "offer" && message.userId !== userId.current) {
           await handleOffer(
             message.offer,
@@ -267,7 +263,7 @@ const RoomPage: React.FC = () => {
             iceCandidatesQueue
           );
         }
-
+  
         if (message.action === "answer" && message.userId !== userId.current) {
           await handleAnswer(
             message.answer,
@@ -277,7 +273,7 @@ const RoomPage: React.FC = () => {
           );
           console.log("Received answer from user:", message.userId);
         }
-
+  
         if (
           message.action === "ice-candidate" &&
           message.userId !== userId.current
@@ -290,7 +286,7 @@ const RoomPage: React.FC = () => {
             iceCandidatesQueue
           );
         }
-
+  
         if (
           message.action === "leave-room" &&
           message.userId !== userId.current
@@ -301,30 +297,33 @@ const RoomPage: React.FC = () => {
             peerConnectionsRef.current,
             setRemoteStreams
           );
-          handleSetRoom();
+          await handleSetRoom(); // Fetch users after a user leaves
         }
-
+  
         if (message.action === "clap") {
           playClapSound();
         }
-
+  
         if (message.action === "mirrorball") {
           handleMirrorball();
         }
-        
+  
         if (message.action === "start") {
-          const users = await roomService.getAllUsersInRoom(parseInt(roomId));
-          setSelectedUser(userId?.current);
+          if (!selectedUser) {
+            console.log(roomUsers);
+            // setQueue(roomUsers);
+            // setSelectedUser(roomUsers[0].user_id);
+          }
         }
       } catch (error) {
         console.error("Error parsing JSON:", error);
       }
     };
-
+  
     socket.onclose = async () => {
       console.log("WebSocket disconnected");
       await roomService.deleteUserInRoom(parseInt(roomId), userId.current);
-      handleSetRoom();
+      await handleSetRoom(); // Fetch users after disconnect
       webSocketRef.current?.send(
         JSON.stringify({
           action: "leave-room",
@@ -334,11 +333,11 @@ const RoomPage: React.FC = () => {
       );
       handleUserLeft(userId.current, peerConnectionsRef.current, setRemoteStreams);
     };
-
+  
     socket.onerror = (error) => {
       console.error("WebSocket error:", error);
     };
-
+  
     return () => {
       // Clean up socket and connections
       if (webSocketRef.current?.readyState === WebSocket.OPEN) {
@@ -412,6 +411,7 @@ const RoomPage: React.FC = () => {
 
   const handleUserSelect = (userId: string) => {
     setSelectedUser(userId);
+    console.log("hi");
   };
 
   useEffect(() => {
@@ -429,7 +429,7 @@ const RoomPage: React.FC = () => {
         <div className="w-3/12 overflow-y-auto mr-14">
           <ul role="list" className="divide-y">
             {roomUsers.map((user) => (
-              <li key={user.user_id} className="py-3 sm:py-4" onClick={() => handleUserSelect(user.user_id)}>
+              <li key={user.user_id} className="py-3 sm:py-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-4">
                     <img
