@@ -44,15 +44,16 @@ export class FriendService {
         throw new Error("Missing userId or targetUserId");
       }
 
-      const response = await axios.get<boolean>(
-        `${API_BASE_URL}/checkFollowing/${userId}/${targetUserId}`
+      const response = await axios.get<{ following: boolean }>(
+        `${API_BASE_URL}/friends/${userId}/${targetUserId}`
       );
 
-      return response.data;
+      // 객체의 following 속성을 반환합니다.
+      return response.data.following;
     } catch (error) {
       console.error("Error checking following:", error);
-      throw error; // 예외를 상위로 다시 던질 수 있습니다.
-    }
+      throw error;
+      }
   }
 
   async followUser(userId: string, followingId: string): Promise<void> {

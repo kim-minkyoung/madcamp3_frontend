@@ -26,6 +26,8 @@ export class UserService {
       user_gender: user.user_gender,
       bio: user.bio,
       total_score: user.total_score,
+      followers: user.follower_count,
+      following: user.following_count,
     }));
     return users;
   }
