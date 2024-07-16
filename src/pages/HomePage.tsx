@@ -13,14 +13,6 @@ const HomePage: React.FC = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
-    const userServiceInterface = new UserService();
-    userServiceInterface.getUserInfo(localStorage.getItem('userId') || "").then((user: User) => {
-      console.log(user)});
-    userServiceInterface.updateUserInfo(localStorage.getItem('userId') || "", {bio: "안녕하세요"}).then((user: User) => {
-      console.log(user)});
-  });
-
-  useEffect(() => {
     setActiveTabId(location.pathname.split("/")[1] || "main");
   }, [location.pathname]);
 

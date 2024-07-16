@@ -7,9 +7,11 @@ import {
   handleUserLeft,
 } from "./handlers";
 import "../../index.css";
+import {Room, RoomService} from "../../services/RoomService";
+import {User, UserService} from "../../services/UserService";
 
 const RoomPage: React.FC = () => {
-  const { roomId } = useParams<{ roomId: string }>();
+  const { roomId } = useParams<{ roomId: string }>() as { roomId: string };
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const webSocketRef = useRef<WebSocket | null>(null);
@@ -27,20 +29,53 @@ const RoomPage: React.FC = () => {
     {}
   ).current;
 
-  const [showMirrorball, setShowMirrorball] = useState(false);
+  const roomService = new RoomService();
+  const userService = new UserService();
+  const [roomUsers, setRoomUsers] = useState<User[]>([]);
+
   const [showClapEffect, setShowClapEffect] = useState(false);
+  const [showMirrorball, setShowMirrorball] = useState(false);
+  const [showBlinkEffect, setShowBlinkEffect] = useState(false);
 
   const playClapSound = () => {
-    const clapAudio = new Audio("../../../public/clapSound.mp3");
+    const clapAudio = new Audio('/clapSound.mp3');
     clapAudio.play();
     setShowClapEffect(true);
     setTimeout(() => setShowClapEffect(false), 1000); // Hide after 1 second
   };
 
+  const sendClap = () => {
+    if (webSocketRef.current?.readyState === WebSocket.OPEN) {
+      webSocketRef.current.send(
+        JSON.stringify({
+          action: "clap",
+          roomId,
+          userId: userId.current,
+        })
+      );
+    }
+  };
+
   const handleMirrorball = () => {
     setShowMirrorball(true);
-    setTimeout(() => setShowMirrorball(false), 3000); // Hide after 5 seconds
+    setShowBlinkEffect(true);
+    setTimeout(() => {
+      setShowMirrorball(false);
+      setShowBlinkEffect(false);
+    }, 2000);
   };
+
+  const sendMirrorball = () => {
+    if (webSocketRef.current?.readyState === WebSocket.OPEN) {
+      webSocketRef.current.send(
+        JSON.stringify({
+          action: "mirrorball",
+          roomId,
+          userId: userId.current,
+        })
+      );
+    }
+  }
 
   const createPeerConnection = useCallback(
     (id: string) => {
@@ -98,6 +133,12 @@ const RoomPage: React.FC = () => {
     [localStream, roomId]
   );
 
+  const handleSetRoom = async () => {
+    const usersInRoom = await roomService.getAllUsersInRoom(parseInt(roomId));
+    setRoomUsers(usersInRoom);
+    console.log("Users in room:", usersInRoom.map((user) => user.user_name));
+  };
+
   useEffect(() => {
     const init = async () => {
       try {
@@ -127,12 +168,18 @@ const RoomPage: React.FC = () => {
     if (webSocketRef.current) return;
     if (!roomId) return;
 
+    
     const socket = new WebSocket(
       "wss://e4w7206ka6.execute-api.ap-northeast-2.amazonaws.com/production"
     );
     webSocketRef.current = socket;
 
-    socket.onopen = () => {
+    socket.onopen = async () => {
+      if (!roomUsers.find((user) => user.user_id === userId.current)) {
+        await roomService.enterRoom(parseInt(roomId), userId.current);
+      }
+      handleSetRoom();
+      console.log("WebSocket connected");
       webSocketRef.current?.send(
         JSON.stringify({
           action: "join-room",
@@ -140,7 +187,6 @@ const RoomPage: React.FC = () => {
           userId: userId.current,
         })
       );
-      console.log("WebSocket connected");
     };
 
     socket.onmessage = async (event) => {
@@ -173,6 +219,7 @@ const RoomPage: React.FC = () => {
           );
 
           console.log("Creating offer for new user:", message.userId);
+          handleSetRoom();
         }
 
         if (
@@ -228,14 +275,25 @@ const RoomPage: React.FC = () => {
             peerConnectionsRef.current,
             setRemoteStreams
           );
+          handleSetRoom();
+        }
+
+        if (message.action === "clap") {
+          playClapSound();
+        }
+
+        if (message.action === "mirrorball") {
+          handleMirrorball();
         }
       } catch (error) {
         console.error("Error parsing JSON:", error);
       }
     };
 
-    socket.onclose = () => {
+    socket.onclose = async () => {
       console.log("WebSocket disconnected");
+      await roomService.deleteUserInRoom(parseInt(roomId), userId.current)
+      handleSetRoom();
       webSocketRef.current?.send(
         JSON.stringify({
           action: "leave-room",
@@ -337,142 +395,133 @@ const RoomPage: React.FC = () => {
   }, [messages]);
 
   return (
-    <div style={{ display: "flex", flexDirection: "row", height: "80vh" }}>
-      <div className="w-3/12 overflow-y-auto mr-14">
+    <div className={`w-full h-screen ${showBlinkEffect ? 'animate-blink' : ''}`}>
+      <div style={{ display: "flex", flexDirection: "row", height: "80vh" }}>
+        <div className="w-3/12 overflow-y-auto mr-14">
         <ul role="list" className="divide-y">
-          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((item) => (
-            <li key={item} className="py-3 sm:py-4">
+          {roomUsers.map((user) => (
+            <li key={user.user_id} className="py-3 sm:py-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
                   <img
-                    className="w-8 h-8 rounded-full"
-                    src="https://flowbite.com/docs/images/people/profile-picture-1.jpg"
-                    alt="Neil image"
+                    className="w-10 h-10 rounded-full"
+                    src={user.user_image||"https://previews.123rf.com/images/kurhan/kurhan1704/kurhan170400964/76701347-%ED%96%89%EB%B3%B5%ED%95%9C-%EC%82%AC%EB%9E%8C-%EC%96%BC%EA%B5%B4.jpg"}
+                    alt={`${user.user_name} image`}
                   />
                   <div className="grid grid-rows-2 gap-y-1">
                     <span className="text-sm font-medium text-gray-900">
-                      Neil Sims
-                    </span>
-                    <span className="text-sm text-gray-500">
-                      팔로워: 100, 팔로잉: 100
+                      {user.user_name}
                     </span>
                   </div>
-                </div>
-                <div className="text-base font-semibold text-gray-900">
-                  100점
                 </div>
               </div>
             </li>
           ))}
         </ul>
-      </div>
-
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          width: "50%",
-          overflowY: "auto",
-        }}
-      >
-        <div style={{ flex: 1 }}>
-          {localStream && (
-            <video
-              ref={localVideoRef}
-              autoPlay
-              playsInline
-              muted
-              style={{ width: "100%", height: "100%", transform: "scaleX(-1)" }}
-            />
-          )}
-          {showClapEffect && (
-            <div className="clap-effect">👏</div> // 간단한 박수 효과
-          )}
         </div>
+
         <div
           style={{
             display: "flex",
-            flexWrap: "wrap",
-            justifyContent: "center",
+            flexDirection: "column",
+            alignItems: "center",
+            width: "50%",
+            overflowY: "auto",
           }}
         >
-          {Object.keys(remoteStreams).map((id) => (
-            <div
-              key={id}
-              style={{ width: "100px", height: "100px", margin: "5px" }}
-            >
-              <RemoteVideo stream={remoteStreams[id]} />
-            </div>
-          ))}
-        </div>
-        <section className="flex">
-          <div className="flex flex-wrap justify-center">
-            <button
-              className="p-3 mx-2 mb-3 text-white transition duration-300 transform bg-purple-600 rounded-lg shadow-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-50 hover:rotate-12"
-              onClick={playClapSound}
-            >
-              👏 박수 👏
-            </button>
-            <button
-              className="p-3 mx-2 mb-3 text-white transition duration-300 transform bg-pink-600 rounded-lg shadow-md hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-opacity-50 hover:rotate-12"
-              onClick={handleMirrorball}
-            >
-              🕺 미러볼 🕺
-            </button>
-            <button className="p-3 mx-2 mb-3 text-white transition duration-300 transform bg-blue-600 rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 hover:scale-105">
-              🎤 자랑 끝내기 🎤
-            </button>
+          <div style={{ flex: 1 }}>
+            {localStream && (
+              <video
+                ref={localVideoRef}
+                autoPlay
+                playsInline
+                muted
+                style={{ width: "100%", height: "100%", transform: "scaleX(-1)" }}
+              />
+            )}
+            {showClapEffect && (
+              <div className="clap-effect">👏</div> // 간단한 박수 효과
+            )}
           </div>
-        </section>
-        {showMirrorball && (
-          <div className="mirrorball">
-            <img src="/path/to/mirrorball.gif" alt="Mirrorball" />
-          </div>
-        )}
-      </div>
-      <div className="flex flex-col w-3/12 ml-12">
-        <div id="chat-container" className="flex-grow p-4 overflow-auto">
-          {messages.map((message, index) => (
-            <div
-              key={index}
-              className={`flex ${
-                message.sender === "Me" ? "justify-end" : "justify-start"
-              } mb-4`}
-            >
-              {message.sender !== "Me" && (
-                <img
-                  src="https://source.unsplash.com/random/50x50"
-                  className="object-cover w-8 h-8 rounded-full"
-                  alt=""
-                />
-              )}
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              justifyContent: "center",
+            }}
+          >
+            {Object.keys(remoteStreams).map((id) => (
               <div
-                className={`mx-2 py-2 px-3 rounded-3xl text-white ${
-                  message.sender === "Me" ? "bg-blue-400" : "bg-gray-400"
-                } ml-2`}
+                key={id}
+                style={{ width: "100px", height: "100px", margin: "5px" }}
               >
-                {message.text}
+                <RemoteVideo stream={remoteStreams[id]} />
               </div>
-              {message.sender === "Me" && (
-                <img
-                  src="https://source.unsplash.com/random/50x50"
-                  className="object-cover w-8 h-8 rounded-full"
-                  alt=""
-                />
-              )}
+            ))}
+          </div>
+          <section className="flex">
+            <div className="flex flex-wrap justify-center">
+              <button
+                className="p-3 mx-2 mb-3 text-white transition duration-300 transform bg-purple-600 rounded-lg shadow-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-50 hover:rotate-12"
+                onClick={sendClap}
+              >
+                👏 박수 👏
+              </button>
+              <button
+                className="p-3 mx-2 mb-3 text-white transition duration-300 transform bg-pink-600 rounded-lg shadow-md hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-opacity-50 hover:rotate-12"
+                onClick={sendMirrorball}
+              >
+                🕺 미러볼 🕺
+              </button>
+              <button className="p-3 mx-2 mb-3 text-white transition duration-300 transform bg-blue-600 rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 hover:scale-105">
+                🎤 자랑 끝내기 🎤
+              </button>
             </div>
-          ))}
+          </section>
         </div>
-        <div className="p-4 bg-gray-300">
-          <input
-            className="w-full px-3 py-2 rounded-xl"
-            type="text"
-            placeholder="type your message here..."
-            value={inputMessage}
-            onChange={(e) => setInputMessage(e.target.value)}
-            onKeyPress={(e) => e.key === "Enter" && sendMessage()}
-          />
+        <div className="flex flex-col w-3/12 ml-12">
+          <div id="chat-container" className="flex-grow p-4 overflow-auto">
+            {messages.map((message, index) => (
+              <div
+                key={index}
+                className={`flex ${
+                  message.sender === "Me" ? "justify-end" : "justify-start"
+                } mb-4`}
+              >
+                {message.sender !== "Me" && (
+                  <img
+                    src="https://source.unsplash.com/random/50x50"
+                    className="object-cover w-8 h-8 rounded-full"
+                    alt=""
+                  />
+                )}
+                <div
+                  className={`mx-2 py-2 px-3 rounded-3xl text-white ${
+                    message.sender === "Me" ? "bg-blue-400" : "bg-gray-400"
+                  } ml-2`}
+                >
+                  {message.text}
+                </div>
+                {message.sender === "Me" && (
+                  <img
+                    src="https://source.unsplash.com/random/50x50"
+                    className="object-cover w-8 h-8 rounded-full"
+                    alt=""
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+          <div className="p-4 bg-gray-300">
+            <input
+              className="w-full px-3 py-2 rounded-xl"
+              type="text"
+              placeholder="type your message here..."
+              value={inputMessage}
+              onChange={(e) => setInputMessage(e.target.value)}
+              onKeyPress={(e) => e.key === "Enter" && sendMessage()}
+            />
+          </div>
         </div>
       </div>
     </div>

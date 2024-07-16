@@ -67,7 +67,7 @@ export class RoomService {
 
   async enterRoom(roomId: number, userId: string): Promise<void> {
     try {
-      await axios.post(`${API_BASE_URL}/room/${roomId}/enter`, { user_id: userId });
+      await axios.post(`${API_BASE_URL}/room/${roomId}/user`, { userId: userId });
     } catch (error) {
       console.error("Error entering room:", error);
     }
@@ -98,7 +98,8 @@ export class RoomService {
 
   async deleteUserInRoom(roomId: number, userId: string): Promise<void> {
     try {
-      await axios.delete(`${API_BASE_URL}/room/${roomId}/${userId}`);
+      const response = await axios.delete(`${API_BASE_URL}/room/${roomId}/${userId}`);
+      console.log(response);
     } catch (error) {
       console.error("Error deleting user in room:", error);
     }
