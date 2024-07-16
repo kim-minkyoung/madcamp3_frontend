@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import {
   handleOffer,
   handleAnswer,
@@ -11,6 +11,7 @@ import { Room, RoomService } from "../../services/RoomService";
 import { User, UserService } from "../../services/UserService";
 
 const RoomPage: React.FC = () => {
+  const Navigate = useNavigate();
   const { roomId } = useParams<{ roomId: string }>() as { roomId: string };
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
@@ -37,7 +38,15 @@ const RoomPage: React.FC = () => {
   const [showBlinkEffect, setShowBlinkEffect] = useState(false);
   const [ownerId, setOwnerId] = useState<string | null>(null);
   const [roomUsers, setRoomUsers] = useState<User[]>([]);
-  const [queue, setQueue] = useState<User[]>([]);
+  const [scoring, setScoring] = useState<boolean>(false);
+  const [score, setScore] = useState(0);
+
+  useEffect(() => {
+    const filteredUsers = roomUsers.filter((user) => user.scores[0] === -1);
+    if (scoring && selectedUser === userId.current && filteredUsers.length === 0) {
+      handleEndGame();
+    }
+  }, [scoring, selectedUser, roomUsers]);
 
   useEffect(() => {
     const fetchOwner = async () => {
@@ -95,9 +104,42 @@ const RoomPage: React.FC = () => {
         JSON.stringify({
           action: "start",
           roomId,
+          targetId: ownerId,
+        })
+      );
+    }
+  };
+  
+  const handleEnd = async () => {
+    if (webSocketRef.current?.readyState === WebSocket.OPEN) {
+      webSocketRef.current.send(
+        JSON.stringify({
+          action: "end",
+          roomId,
           userId: userId.current,
         })
       );
+    }
+  }
+
+  const handleSelectUser = (userId: string) => {
+    setScoring(false);
+    webSocketRef.current?.send(
+      JSON.stringify({
+        action: "start",
+        roomId,
+        targetId: userId,
+      })
+    );
+  }
+
+  const handleSubmitScore = async () => {
+    if (selectedUser && score) {
+      await roomService.updateScore(parseInt(roomId), selectedUser, score);
+      const updatedRoomUsers = await handleSetRoom();
+      setRoomUsers(updatedRoomUsers);
+      setScoring(false);
+      setScore(0);
     }
   };
 
@@ -171,13 +213,34 @@ const RoomPage: React.FC = () => {
   const handleSetRoom = useCallback(async () => {
     try {
       const usersInRoom = await roomService.getAllUsersInRoom(parseInt(roomId));
-      setRoomUsers(usersInRoom);
-      return usersInRoom;
+      
+      const usersWithScores = await Promise.all(
+        usersInRoom.map(async (user) => {
+          const score = await roomService.getUserScoreInRoom(parseInt(roomId), user.user_id);
+          return { ...user, scores: [score] };
+        })
+      );
+  
+      setRoomUsers(usersWithScores);
+      return usersWithScores;
     } catch (error) {
       console.error("Error fetching users in room:", error);
       return [];
     }
   }, [roomId, roomService]);
+
+  const handleEndGame = async () => {
+    if (webSocketRef.current?.readyState === WebSocket.OPEN) {
+      setScoring(false);
+      webSocketRef.current.send(
+        JSON.stringify({
+          action: "endGame",
+          roomId,
+          userId: userId.current,
+        })
+      );
+    }
+  }
 
   useEffect(() => {
     const init = async () => {
@@ -361,12 +424,24 @@ const RoomPage: React.FC = () => {
         }
 
         if (message.action === "start") {
-          if (!selectedUser) {
-            console.log("onmessage roomUsers:", roomUsers);
-            // setQueue(roomUsers);
-            // setSelectedUser(roomUsers[0].user_id);
-          }
+          setSelectedUser(message.targetId);
         }
+
+        if (message.action === "end") {
+          setScoring(true);
+        }
+
+        if (message.action === "endGame") {
+          setScoring(false);
+          setTimeout(() => {
+            console.log("finished!");
+            setSelectedUser(null);
+          }, 3000);
+          Navigate('/main');
+        }
+
+
+
       } catch (error) {
         console.error("Error parsing JSON:", error);
       }
@@ -473,7 +548,6 @@ const RoomPage: React.FC = () => {
 
   const handleUserSelect = (userId: string) => {
     setSelectedUser(userId);
-    console.log("hi");
   };
 
   useEffect(() => {
@@ -487,81 +561,76 @@ const RoomPage: React.FC = () => {
     <div
       className={`w-full h-screen ${showBlinkEffect ? "animate-blink" : ""}`}
     >
-      <div style={{ display: "flex", flexDirection: "row", height: "80vh" }}>
+      <div style={{ display: "flex", flexDirection: "row", height: "70vh" }}>
         <div className="w-3/12 overflow-y-auto mr-14">
-          <ul role="list" className="divide-y">
-            {roomUsers.map((user) => (
-              <li key={user.user_id} className="py-3 sm:py-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
-                    <img
-                      className="w-10 h-10 rounded-full"
-                      style={{ objectFit: "cover" }}
-                      src={
-                        user.user_image ||
-                        "https://previews.123rf.com/images/kurhan/kurhan1704/kurhan170400964/76701347-%ED%96%89%EB%B3%B5%ED%95%9C-%EC%82%AC%EB%9E%8C-%EC%96%BC%EA%B5%B4.jpg"
-                      }
-                      alt={`${user.user_name} image`}
-                    />
-                    <div className="grid grid-rows-2 gap-y-1">
-                      <span className="text-sm font-medium text-gray-900">
-                        {user.user_name}
+        <ul role="list" className="divide-y">
+          {roomUsers.map((user) => (
+            <li key={user.user_id} className="py-3 sm:py-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                  <img
+                    className="w-10 h-10 rounded-full"
+                    style={{ objectFit: "cover" }}
+                    src={
+                      user.user_image ||
+                      "https://previews.123rf.com/images/kurhan/kurhan1704/kurhan170400964/76701347-%ED%96%89%EB%B3%B5%ED%95%9C-%EC%82%AC%EB%9E%8C-%EC%96%BC%EA%B5%B4.jpg"
+                    }
+                    alt={`${user.user_name} image`}
+                  />
+                  <div className="grid grid-rows-2 gap-y-1">
+                    <span className="text-sm font-medium text-gray-900">
+                      {user.user_name}
+                    </span>
+                    {user.user_id === selectedUser && (
+                      <span className="text-xs font-medium text-red-500">on_air</span>
+                    )}
+                    {(user.scores[0] !== -1 && user.scores[0] !== 101) && (
+                      <span className="text-xs font-medium text-gray-700">
+                        {user.scores[0]}점
                       </span>
-                    </div>
+                    )}
                   </div>
                 </div>
-              </li>
-            ))}
-          </ul>
+              </div>
+            </li>
+          ))}
+        </ul>
         </div>
 
-        {selectedUser === null ? (
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              width: "50%",
-              overflowY: "auto",
-            }}
-          >
-            {userId.current === ownerId ? (
-              <button
-                className="p-4 text-white bg-blue-600 rounded"
-                onClick={handleStart}
-              >
-                방 시작
-              </button>
-            ) : (
-              <div className="text-xl text-gray-700">곧 시작할 예정입니다.</div>
-            )}
-          </div>
-        ) : (
-          <div className="flex flex-grow">
-            <div className="flex flex-col w-1/4 overflow-y-auto">
-              {Object.keys(remoteStreams).map(
-                (id) =>
-                  id !== selectedUser && (
-                    <div key={id} className="p-2">
-                      <RemoteVideo stream={remoteStreams[id]} />
-                    </div>
-                  )
-              )}
-            </div>
-            <div className="flex items-center justify-center flex-grow">
-              {selectedUser === userId.current || userId.current === ownerId ? (
-                <div>
-                  <RemoteVideo stream={remoteStreams[selectedUser]} />
-                  <button className="p-4 mt-4 text-white bg-red-600 rounded">
-                    🎤 자랑 끝내기 🎤
-                  </button>
-                </div>
+        <div className="flex flex-col w-6/12 items-center justify-start">
+          {selectedUser === null ? (
+            <div className="flex items-center justify-center h-full">
+              {userId.current === ownerId ? (
+                <button
+                  className="p-4 text-white bg-blue-600 rounded"
+                  onClick={handleStart}
+                >
+                  방 시작
+                </button>
               ) : (
-                <RemoteVideo stream={remoteStreams[selectedUser]} />
+                <div className="text-xl text-gray-700">곧 시작할 예정입니다.</div>
               )}
             </div>
-          </div>
-        )}
+          ) : (
+            <div className="flex flex-col items-center">
+              {selectedUser === userId.current ? (
+                localStream ? (
+                  <RemoteVideo stream={localStream} />
+                ) : null
+              ) : (
+                remoteStreams[selectedUser] ? (
+                  <RemoteVideo stream={remoteStreams[selectedUser]} />
+                ) : null
+              )}
+              {(selectedUser === userId.current || userId.current === ownerId) && (
+                <button className="p-4 mt-4 text-white bg-red-600 rounded"
+                onClick={handleEnd}>
+                  🎤 자랑 끝내기 🎤
+                </button>
+              )}
+            </div>
+          )}
+        </div>
 
         <div className="flex flex-col w-3/12 ml-12">
           <div id="chat-container" className="flex-grow p-4 overflow-auto">
@@ -610,25 +679,74 @@ const RoomPage: React.FC = () => {
       </div>
 
       <div className="flex flex-wrap justify-center mt-4">
-        {selectedUser === null ||
-        (selectedUser !== userId.current && userId.current !== ownerId) ? (
-          <>
-            <button
-              className="p-3 mx-2 mb-3 text-white transition duration-300 transform bg-purple-600 rounded-lg shadow-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-50 hover:rotate-12"
-              onClick={sendClap}
-            >
-              👏 박수 👏
-            </button>
-            <button
-              className="p-3 mx-2 mb-3 text-white transition duration-300 transform bg-pink-600 rounded-lg shadow-md hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-opacity-50 hover:rotate-12"
-              onClick={sendMirrorball}
-            >
-              🕺 미러볼 🕺
-            </button>
-          </>
-        ) : null}
+        <button
+          className="p-3 mx-2 mb-3 text-white transition duration-300 transform bg-purple-600 rounded-lg shadow-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-50 hover:rotate-12"
+          onClick={sendClap}
+        >
+          👏 박수 👏
+        </button>
+        <button
+          className="p-3 mx-2 mb-3 text-white transition duration-300 transform bg-pink-600 rounded-lg shadow-md hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-opacity-50 hover:rotate-12"
+          onClick={sendMirrorball}
+        >
+          🕺 미러볼 🕺
+        </button>
       </div>
+
+      {scoring && selectedUser === userId.current && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white p-6 rounded shadow-lg">
+            <h2 className="text-2xl mb-4">사용자를 선택해주세요</h2>
+            <div className="grid grid-cols-1 gap-4">
+              {roomUsers
+                .filter((user) => user.scores[0] === -1 && selectedUser !== user.user_id)
+                .map((user) => (
+                  <div
+                    key={user.user_id}
+                    className="flex items-center p-2 border rounded cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleSelectUser(user.user_id)} // 선택한 유저를 처리하는 함수
+                  >
+                    <img
+                      className="w-10 h-10 rounded-full"
+                      style={{ objectFit: "cover" }}
+                      src={
+                        user.user_image ||
+                        "https://previews.123rf.com/images/kurhan/kurhan1704/kurhan170400964/76701347-%ED%96%89%EB%B3%B5%ED%95%9C-%EC%82%AC%EB%9E%8C-%EC%96%BC%EA%B5%B4.jpg"
+                      }
+                      alt={`${user.user_name} image`}
+                    />
+                    <span className="ml-4 text-sm font-medium text-gray-900">
+                      {user.user_name}
+                    </span>
+                  </div>
+                ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {scoring && selectedUser !== userId.current && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white p-6 rounded shadow-lg">
+            <h2 className="text-2xl mb-4">점수를 매겨주세요</h2>
+            <input
+              type="number"
+              className="w-full px-3 py-2 mb-4 border rounded"
+              placeholder="점수를 입력하세요"
+              onChange={(e) => setScore(e.target.value as any)}
+            />
+            <button
+              className="w-full p-2 text-white bg-blue-600 rounded"
+              onClick={handleSubmitScore} // 점수 제출을 처리하는 함수
+            >
+              Submit
+            </button>
+          </div>
+        </div>
+      )}
     </div>
+
+
   );
 };
 
@@ -638,7 +756,7 @@ const RemoteVideo: React.FC<{ stream: MediaStream }> = ({ stream }) => {
   useEffect(() => {
     if (videoRef.current) {
       videoRef.current.srcObject = stream;
-      console.log("Setting remote video stream");
+      console.log("Setting remote video stream", stream);
     }
   }, [stream]);
 
@@ -651,5 +769,6 @@ const RemoteVideo: React.FC<{ stream: MediaStream }> = ({ stream }) => {
     />
   );
 };
+
 
 export default RoomPage;
