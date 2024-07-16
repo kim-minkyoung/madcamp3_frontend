@@ -37,6 +37,26 @@ export class RoomService {
     };
   }
 
+  async getRoomById(roomId: number): Promise<Room|null> {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/room/${roomId}`);
+      const room: Room = {
+        room_id: response.data.room_id,
+        title: response.data.title,
+        sub_title: response.data.sub_title,
+        rank_mode: response.data.rank_mode,
+        open: response.data.open,
+        created_at: response.data.created_at,
+        category: response.data.category,
+        owner_id: response.data.owner_id,
+      };
+      return room;
+    } catch (error) {
+      console.error("Error fetching room:", error);
+      return null;
+    }
+  }
+
   async createRoom(room: Partial<Room>): Promise<string|null> {
     try {
       console.log(`${API_BASE_URL}/room`);
