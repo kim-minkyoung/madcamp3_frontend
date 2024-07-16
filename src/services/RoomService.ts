@@ -41,15 +41,16 @@ export class RoomService {
     try {
       const response = await axios.get(`${API_BASE_URL}/room/${roomId}`);
       const room: Room = {
-        room_id: response.data.room_id,
-        title: response.data.title,
-        sub_title: response.data.sub_title,
-        rank_mode: response.data.rank_mode,
-        open: response.data.open,
-        created_at: response.data.created_at,
-        category: response.data.category,
-        owner_id: response.data.owner_id,
+        room_id: response.data[0].room_id,
+        title: response.data[0].title,
+        sub_title: response.data[0].sub_title,
+        rank_mode: response.data[0].rank_mode,
+        open: response.data[0].open,
+        created_at: response.data[0].created_at,
+        category: response.data[0].category,
+        owner_id: response.data[0].owner_id,
       };
+      console.log(room);
       return room;
     } catch (error) {
       console.error("Error fetching room:", error);
