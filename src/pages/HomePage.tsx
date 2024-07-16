@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import TabBar from "../components/TabBar";
 import "bootstrap/dist/css/bootstrap.min.css"; // Bootstrap CSS 가져오기
-import {User, UserService} from "../services/UserService";
+import { User, UserService } from "../services/UserService";
 
 const HomePage: React.FC = () => {
   const navigate = useNavigate();
@@ -13,33 +13,24 @@ const HomePage: React.FC = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
-    const userServiceInterface = new UserService();
-    userServiceInterface.getUserInfo(localStorage.getItem('userId') || "").then((user: User) => {
-      console.log(user)});
-    userServiceInterface.updateUserInfo(localStorage.getItem('userId') || "", {bio: "안녕하세요"}).then((user: User) => {
-      console.log(user)});
-  });
-
-  useEffect(() => {
     setActiveTabId(location.pathname.split("/")[1] || "main");
   }, [location.pathname]);
 
-
   useEffect(() => {
-    const userId = localStorage.getItem('userId');
+    const userId = localStorage.getItem("userId");
     setIsLoggedIn(!!userId); // userId가 존재하면 true, 그렇지 않으면 false
   }, []);
 
   useEffect(() => {
     const handleStorageChange = () => {
-      const userId = localStorage.getItem('userId');
+      const userId = localStorage.getItem("userId");
       setIsLoggedIn(!!userId);
     };
 
-    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener("storage", handleStorageChange);
 
     return () => {
-      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener("storage", handleStorageChange);
     };
   }, []);
 
@@ -72,12 +63,9 @@ const HomePage: React.FC = () => {
         />
         <div className="mt-3">
           <Outlet />
-          <div className="flex justify-between items-center mb-3">
+          <div className="flex items-center justify-between mb-3">
             {!isLoggedIn && (
-              <button
-                className="btn btn-primary"
-                onClick={handleLoginClick}
-              >
+              <button className="btn btn-primary" onClick={handleLoginClick}>
                 로그인
               </button>
             )}
