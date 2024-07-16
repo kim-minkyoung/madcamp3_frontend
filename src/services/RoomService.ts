@@ -109,6 +109,16 @@ export class RoomService {
     }
   }
 
+  async getUserScoreInRoom(roomId: number, userId: string): Promise<number> {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/room/${roomId}/${userId}/score`);
+      return response.data[0].score;
+    } catch (error) {
+      console.error("Error fetching user score in room:", error);
+      return 0;
+    }
+  }
+
   async updateScore(roomId: number, userId: string, score: number): Promise<void> {
     try {
       await axios.put(`${API_BASE_URL}/room/${roomId}/${userId}`, { score });
