@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios from "axios";
 
 const API_BASE_URL = process.env.REACT_APP_URL;
 
@@ -7,14 +7,17 @@ export interface User {
   user_id: string;
   user_name: string;
   user_image: string | null;
-  user_gender: '남성' | '여성';
+  user_gender: "남성" | "여성";
   bio: string | null;
   total_score: number;
+  followers: number; // 팔로워 수
+  following: number; // 팔로잉 수
+  scores: number[]; // 점수 기록 배열
 }
 
 export class UserService {
   // 전체 유저 랭킹 조회 (누적 점수 기준)
-    async getAllUsersRanking(): Promise<User[]> {
+  async getAllUsersRanking(): Promise<User[]> {
     const response = await axios.get(`${API_BASE_URL}/user`);
     const users: User[] = response.data.map((user: any) => ({
       user_id: user.user_id,
@@ -36,15 +39,20 @@ export class UserService {
       user_image: response.data.user_image,
       user_gender: response.data.user_gender,
       bio: response.data.bio,
-      total_score: response.data.total_score,
+      total_score: response.data.total_score || 0,
+      following: response.data.following || 0,
+      followers: response.data.followers || 0,
+      scores: response.data.scores || 0,
     };
     return response.data;
   }
 
-
   // 유저 정보 수정
   async updateUserInfo(userId: string, userInfo: Partial<User>): Promise<User> {
-    const response = await axios.put(`${API_BASE_URL}/user/${userId}`, userInfo);
+    const response = await axios.put(
+      `${API_BASE_URL}/user/${userId}`,
+      userInfo
+    );
     return response.data;
   }
 }
