@@ -11,16 +11,18 @@ import {
 } from "chart.js";
 import userService, { User } from "../services/UserService";
 import FriendService from "../services/FriendService";
+import { on } from "events";
 
 Chart.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 const UserProfile: React.FC<{
   user: User;
-  onUpdateFollowers: (userId: string, newFollowersCount: number) => void;
+  onUpdateFollowers: () => void;
 }> = ({ user, onUpdateFollowers }) => {
   const [isFollowing, setIsFollowing] = useState<boolean>(false);
   const [followersCount, setFollowersCount] = useState<number>(0);
   const [followingCount, setFollowingCount] = useState<number>(0);
+  const userId = localStorage.getItem("userId") as string;
 
   useEffect(() => {
     // Fetch initial followers and following counts
@@ -28,33 +30,35 @@ const UserProfile: React.FC<{
       try {
         const followers = await FriendService.getFollowers(user.user_id);
         const followings = await FriendService.getFollowings(user.user_id);
+        const isFollowing = await FriendService.checkFollowing(userId, user.user_id);
+        console.log(isFollowing);
+        setIsFollowing(isFollowing);
         setFollowersCount(followers.length);
         setFollowingCount(followings.length);
 
-        console.log("follower: ", user.followers);
-        console.log("following: ", user.following);
+
       } catch (error) {
         console.error("Error fetching follow counts:", error);
       }
     };
 
     fetchFollowCounts();
-  }, [user]);
+  }, [user.user_id]);
 
   const handleFollowToggle = async () => {
-    const { user_id: userId } = user;
     try {
       if (isFollowing) {
         // Unfollow the user
         await FriendService.unfollowUser(userId, user.user_id);
         setIsFollowing(false);
-        onUpdateFollowers(user.user_id, followersCount - 1);
+        setFollowersCount((prev) => prev - 1);
       } else {
         // Follow the user
         await FriendService.followUser(userId, user.user_id);
         setIsFollowing(true);
-        onUpdateFollowers(user.user_id, followersCount + 1);
+        setFollowersCount((prev) => prev + 1);
       }
+      onUpdateFollowers();
     } catch (error) {
       console.error("Error toggling follow:", error);
     }
@@ -141,7 +145,7 @@ const UserProfile: React.FC<{
               }}
               onClick={handleFollowToggle}
             >
-              {isFollowing ? "팔로우 취소" : "팔로우하기"}
+              {isFollowing ? "팔로우 취소" : "팔로우"}
             </button>
           </div>
         )}

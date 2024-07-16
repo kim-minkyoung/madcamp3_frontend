@@ -7,16 +7,15 @@ const Tab2: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
 
   // Fetch users on component mount
+  const fetchUsers = async () => {
+    try {
+      const usersData = await userService.getAllUsersRanking();
+      setUsers(usersData);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+    }
+  };
   useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        const usersData = await userService.getAllUsersRanking();
-        setUsers(usersData);
-      } catch (error) {
-        console.error("Error fetching users:", error);
-      }
-    };
-
     fetchUsers();
   }, []);
 
@@ -26,23 +25,6 @@ const Tab2: React.FC = () => {
       setSelectedUser(user);
     } catch (error) {
       console.error("Error fetching user details:", error);
-    }
-  };
-
-  const updateFollowersCount = (userId: string, newFollowersCount: number) => {
-    setUsers((prevUsers) =>
-      prevUsers.map((user) =>
-        user.user_id === userId
-          ? { ...user, followers: newFollowersCount }
-          : user
-      )
-    );
-    if (selectedUser && selectedUser.user_id === userId) {
-      setSelectedUser((prevSelectedUser) =>
-        prevSelectedUser
-          ? { ...prevSelectedUser, followers: newFollowersCount }
-          : prevSelectedUser
-      );
     }
   };
 
@@ -85,8 +67,8 @@ const Tab2: React.FC = () => {
                       {user.user_name}
                     </span>
                     <span className="text-sm text-gray-500 text-start">
-                      팔로워: {user.followers ?? 0}, 팔로잉:
-                      {user.following ?? 0}
+                      팔로워: {user.following ?? 0}, 팔로잉:
+                      {user.followers ?? 0}
                     </span>
                   </div>
                 </div>
@@ -110,7 +92,7 @@ const Tab2: React.FC = () => {
         {selectedUser ? (
           <UserProfile
             user={selectedUser}
-            onUpdateFollowers={updateFollowersCount}
+            onUpdateFollowers={fetchUsers}
           />
         ) : (
           <div className="flex items-center justify-center h-full text-gray-500">
