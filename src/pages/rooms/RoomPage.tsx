@@ -353,7 +353,7 @@ const RoomPage: React.FC = () => {
           message.userId !== userId.current &&
           message.roomId === roomId
         ) {
-          handleChatMessage({ sender: "you", text: message.message.text });
+          handleChatMessage({ sender: message.userId, text: message.message.text });
         }
 
         if (message.action === "offer" && message.userId !== userId.current) {
@@ -531,7 +531,7 @@ const RoomPage: React.FC = () => {
     if (webSocketRef.current?.readyState === WebSocket.OPEN) {
       const message = inputMessage.trim();
       if (message) {
-        const chatMessage = { sender: "Me", text: message };
+        const chatMessage = { sender: userId.current, text: message };
         webSocketRef.current.send(
           JSON.stringify({
             action: "sendmessage",
@@ -633,38 +633,38 @@ const RoomPage: React.FC = () => {
         </div>
 
         <div className="flex flex-col w-3/12 ml-12">
-          <div id="chat-container" className="flex-grow p-4 overflow-auto">
-            {messages.map((message, index) => (
+        <div id="chat-container" className="flex-grow p-4 overflow-auto">
+        {messages.map((message, index) => {
+          const user = roomUsers.find((user) => user.user_id === message.sender) as User;
+          return (
+            <div
+              key={index}
+              className={`flex ${message.sender === userId.current ? "justify-end" : "justify-start"} mb-4`}
+            >
+              {message.sender !== userId.current && (
+                <img
+                  src={user.user_image || "https://previews.123rf.com/images/kurhan/kurhan1704/kurhan170400964/76701347-%ED%96%89%EB%B3%B5%ED%95%9C-%EC%82%AC%EB%9E%8C-%EC%96%BC%EA%B5%B4.jpg"}
+                  className="object-cover w-8 h-8 rounded-full"
+                  alt={user.user_name || "User"}
+                />
+              )}
               <div
-                key={index}
-                className={`flex ${
-                  message.sender === "Me" ? "justify-end" : "justify-start"
-                } mb-4`}
+                className={`mx-2 py-2 px-3 rounded-3xl text-white ${message.sender === userId.current ? "bg-blue-400" : "bg-gray-400"} ml-2`}
               >
-                {message.sender !== "Me" && (
-                  <img
-                    src="https://source.unsplash.com/random/50x50"
-                    className="object-cover w-8 h-8 rounded-full"
-                    alt=""
-                  />
-                )}
-                <div
-                  className={`mx-2 py-2 px-3 rounded-3xl text-white ${
-                    message.sender === "Me" ? "bg-blue-400" : "bg-gray-400"
-                  } ml-2`}
-                >
-                  {message.text}
-                </div>
-                {message.sender === "Me" && (
-                  <img
-                    src="https://source.unsplash.com/random/50x50"
-                    className="object-cover w-8 h-8 rounded-full"
-                    alt=""
-                  />
-                )}
+                <p className="font-bold">{user.user_name || "Unknown User"}</p>
+                <p>{message.text}</p>
               </div>
-            ))}
-          </div>
+              {message.sender === userId.current && (
+                <img
+                  src={user.user_image || "https://previews.123rf.com/images/kurhan/kurhan1704/kurhan170400964/76701347-%ED%96%89%EB%B3%B5%ED%95%9C-%EC%82%AC%EB%9E%8C-%EC%96%BC%EA%B5%B4.jpg"}
+                  className="object-cover w-8 h-8 rounded-full"
+                  alt={user.user_name || "User"}
+                />
+              )}
+            </div>
+          );
+        })}
+      </div>
           <div className="p-4 bg-gray-300">
             <input
               className="w-full px-3 py-2 rounded-xl"
