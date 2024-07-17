@@ -51,6 +51,7 @@ export class UserService {
 
   // 유저 정보 수정
   async updateUserInfo(userId: string, userInfo: Partial<User>): Promise<User> {
+    console.log(userInfo.total_score);
     const response = await axios.put(
       `${API_BASE_URL}/user/${userId}`,
       userInfo

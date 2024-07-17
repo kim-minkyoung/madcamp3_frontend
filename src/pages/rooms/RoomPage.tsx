@@ -37,6 +37,7 @@ const RoomPage: React.FC = () => {
   const [showMirrorball, setShowMirrorball] = useState(false);
   const [showBlinkEffect, setShowBlinkEffect] = useState(false);
   const [ownerId, setOwnerId] = useState<string | null>(null);
+  const [rankMode, setRankMode] = useState<boolean>(false);
   const [roomUsers, setRoomUsers] = useState<User[]>([]);
   const [scoring, setScoring] = useState<boolean>(false);
   const [score, setScore] = useState(0);
@@ -49,6 +50,7 @@ const RoomPage: React.FC = () => {
       const room = await roomService.getRoomById(parseInt(roomId));
       if (room) {
         setOwnerId(room.owner_id);
+        setRankMode(room.rank_mode);
       }
     };
     fetchOwner();
@@ -228,6 +230,7 @@ const RoomPage: React.FC = () => {
   const handleEndGame = async () => {
     if (webSocketRef.current?.readyState === WebSocket.OPEN) {
       setScoring(false);
+      if (rankMode) roomService.updateTotalScores(parseInt(roomId));
       roomService.closeRoom(parseInt(roomId));
       webSocketRef.current.send(
         JSON.stringify({

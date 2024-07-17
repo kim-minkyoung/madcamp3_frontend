@@ -126,7 +126,6 @@ export class RoomService {
       const userService = new UserService();
       const user = await userService.getUserInfo(userId);
       await axios.put(`${API_BASE_URL}/room/${roomId}/${userId}`, { score });
-      userService.updateUserInfo(userId, { total_score: user.total_score + score });
     } catch (error) {
       console.error("Error updating score:", error);
     }
@@ -138,6 +137,20 @@ export class RoomService {
       console.log(response);
     } catch (error) {
       console.error("Error deleting user in room:", error);
+    }
+  }
+
+  async updateTotalScores(roomId: number): Promise<void> {
+    try {
+      const roomUsers = await this.getAllUsersInRoom(roomId);
+      for (const user of roomUsers) {
+        const userScore = await this.getUserScoreInRoom(roomId, user.user_id);
+        const userService = new UserService();
+        const userDetail = await userService.getUserInfo(user.user_id);
+        await userService.updateUserInfo(user.user_id, { total_score: userDetail.total_score + userScore });
+      }
+    } catch (error) {
+      console.error("Error updating total scores:", error);
     }
   }
 };
