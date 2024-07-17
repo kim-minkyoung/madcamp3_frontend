@@ -58,7 +58,7 @@ const Tab2: React.FC = () => {
                         left: "50%",
                         transform: "translate(-50%, -50%)",
                       }}
-                      src={user.user_image || "default-image-url"}
+                      src={user.user_image || "https://previews.123rf.com/images/kurhan/kurhan1704/kurhan170400964/76701347-%ED%96%89%EB%B3%B5%ED%95%9C-%EC%82%AC%EB%9E%8C-%EC%96%BC%EA%B5%B4.jpg"}
                       alt={user.user_name}
                     />
                   </div>

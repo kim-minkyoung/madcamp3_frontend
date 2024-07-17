@@ -55,22 +55,21 @@ const HomePage: React.FC = () => {
   ];
 
   return (
-    <div className="flex justify-center font-ChosunGs ">
+    <div className="flex justify-center font-ChosunGs">
       <div className="w-full px-32">
-        <TabBar
-          tabs={tabs}
-          activeTabId={activeTabId}
-          onTabClick={handleTabClick}
-        />
+        <TabBar tabs={tabs} activeTabId={activeTabId} onTabClick={handleTabClick} />
+        <div className="flex items-center justify-between mb-3">
+          {!isLoggedIn && (
+            <button
+              className="mr-4 bg-yellow-600 text-white py-2 px-4 rounded-lg hover:bg-yellow-700"
+              onClick={handleLoginClick}
+            >
+              로그인
+            </button>
+          )}
+        </div>
         <div className="mt-3">
           <Outlet />
-          <div className="flex items-center justify-between mb-3">
-            {!isLoggedIn && (
-              <button className="btn btn-primary" onClick={handleLoginClick}>
-                로그인
-              </button>
-            )}
-          </div>
         </div>
       </div>
     </div>
