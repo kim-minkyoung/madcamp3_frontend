@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import TabBar from "../components/TabBar";
 import "bootstrap/dist/css/bootstrap.min.css"; // Bootstrap CSS 가져오기
-import { User, UserService } from "../services/UserService";
+import { Room, RoomService } from "../services/RoomService";
 
 const HomePage: React.FC = () => {
   const navigate = useNavigate();
@@ -15,6 +15,7 @@ const HomePage: React.FC = () => {
   useEffect(() => {
     setActiveTabId(location.pathname.split("/")[1] || "main");
   }, [location.pathname]);
+
 
   useEffect(() => {
     const userId = localStorage.getItem("userId");
