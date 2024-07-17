@@ -9,15 +9,16 @@ import {
   Tooltip,
   Legend,
 } from "chart.js";
-import { User } from "../services/UserService";
+import UserService, { User } from "../services/UserService";
 import FriendService from "../services/FriendService";
 import Modal from "react-modal";
+import "../UserProfile.css"; // 추가된 CSS 파일 import
 
 Chart.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 const customStyles = {
   overlay: {
-    backgroundColor: "rgba(0, 0, 0, 0.75)",
+    backgroundColor: "rgba(0, 0, 0, 0)", // 투명 배경
     zIndex: 1000,
   },
   content: {
@@ -32,6 +33,17 @@ const customStyles = {
     maxWidth: "500px",
     width: "90%",
   },
+  closeButton: {
+    position: "absolute",
+    top: "10px",
+    right: "10px",
+    cursor: "pointer",
+    backgroundColor: "transparent",
+    border: "none",
+    outline: "none",
+    fontSize: "20px",
+    color: "#888",
+  },
 };
 
 const UserProfile: React.FC<{
@@ -45,6 +57,7 @@ const UserProfile: React.FC<{
   const [followings, setFollowings] = useState<User[]>([]);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [modalContent, setModalContent] = useState<string>("");
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const userId = localStorage.getItem("userId") as string;
 
   useEffect(() => {
@@ -108,6 +121,21 @@ const UserProfile: React.FC<{
     } catch (error) {
       console.error("Error fetching followings:", error);
     }
+  };
+
+  const handleUserClick = async (userId: string) => {
+    try {
+      const user = await UserService.getUserInfo(userId);
+      setSelectedUser(user);
+      setIsModalOpen(true);
+    } catch (error) {
+      console.error("Error fetching user data:", error);
+    }
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setSelectedUser(null); // 모달 닫을 때 선택된 사용자 정보 초기화
   };
 
   const data = {
@@ -210,24 +238,56 @@ const UserProfile: React.FC<{
         <h3 className="text-lg font-semibold text-gray-900">역대 점수 추이</h3>
         <Bar
           data={data}
-          options={{ responsive: true, scales: { y: { beginAtZero: true } } }}
+          options={{
+            responsive: true,
+            scales: { y: { beginAtZero: true } },
+          }}
         />
       </div>
 
       <Modal
         isOpen={isModalOpen}
-        onRequestClose={() => setIsModalOpen(false)}
+        onRequestClose={closeModal}
         style={customStyles}
       >
-        <h2>{modalContent === "followers" ? "팔로워 목록" : "팔로잉 목록"}</h2>
-        <ul>
-          {(modalContent === "followers" ? followers : followings).map(
-            (user) => (
-              <li key={user.user_id}>{user.user_name}</li>
-            )
-          )}
-        </ul>
-        <button onClick={() => setIsModalOpen(false)}>닫기</button>
+        <div style={{ display: "flex", justifyContent: "flex-end" }}>
+          {/* X 버튼을 오른쪽 위로 이동 */}
+          <button
+            style={{
+              cursor: "pointer",
+              backgroundColor: "transparent",
+              border: "none",
+            }}
+            onClick={closeModal}
+          >
+            X
+          </button>
+        </div>
+        {selectedUser ? (
+          <UserProfile
+            user={selectedUser}
+            onUpdateFollowers={onUpdateFollowers}
+          />
+        ) : (
+          <>
+            <h2>
+              {modalContent === "followers" ? "팔로워 목록" : "팔로잉 목록"}
+            </h2>
+            <ul>
+              {(modalContent === "followers" ? followers : followings).map(
+                (user) => (
+                  <li
+                    key={user.user_id}
+                    onClick={() => handleUserClick(user.user_id)}
+                    style={{ cursor: "pointer" }}
+                  >
+                    {user.user_name}
+                  </li>
+                )
+              )}
+            </ul>
+          </>
+        )}
       </Modal>
     </div>
   );

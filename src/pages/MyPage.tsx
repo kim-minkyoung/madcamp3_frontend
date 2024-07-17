@@ -20,14 +20,10 @@ const Tab3: React.FC = () => {
     fetchCurrentUser();
   }, []);
 
-
   return (
     <div>
       {currentUser && (
-        <UserProfile
-          user={currentUser}
-          onUpdateFollowers={fetchCurrentUser}
-        />
+        <UserProfile user={currentUser} onUpdateFollowers={fetchCurrentUser} />
       )}
     </div>
   );

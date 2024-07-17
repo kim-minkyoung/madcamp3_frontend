@@ -90,10 +90,7 @@ const Tab2: React.FC = () => {
       </div>
       <div className="w-2/3 p-4 mr-10 overflow-y-auto bg-gray-100">
         {selectedUser ? (
-          <UserProfile
-            user={selectedUser}
-            onUpdateFollowers={fetchUsers}
-          />
+          <UserProfile user={selectedUser} onUpdateFollowers={fetchUsers} />
         ) : (
           <div className="flex items-center justify-center h-full text-gray-500">
             유저를 선택해주세요.

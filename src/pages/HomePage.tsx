@@ -54,7 +54,7 @@ const HomePage: React.FC = () => {
   ];
 
   return (
-    <div className="flex justify-center mt-10">
+    <div className="flex justify-center font-ChosunGs ">
       <div className="w-full px-32">
         <TabBar
           tabs={tabs}
