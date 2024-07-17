@@ -1,6 +1,6 @@
 
 import axios from 'axios';
-import {User} from './UserService';
+import {User, UserService} from './UserService';
 
 const API_BASE_URL = process.env.REACT_APP_URL;
 
@@ -14,6 +14,7 @@ export interface Room {
   category: string;
   owner_id: string;  
 }
+
 
 export class RoomService {
   async getAllOpenRooms(): Promise<Room[]> {
@@ -80,6 +81,7 @@ export class RoomService {
 
   async closeRoom(roomId: number): Promise<void> {
     try {
+      console.log(`${API_BASE_URL}/room/${roomId}`);
       await axios.put(`${API_BASE_URL}/room/${roomId}`);
     } catch (error) {
       console.error("Error closing room:", error);
@@ -121,7 +123,10 @@ export class RoomService {
 
   async updateScore(roomId: number, userId: string, score: number): Promise<void> {
     try {
+      const userService = new UserService();
+      const user = await userService.getUserInfo(userId);
       await axios.put(`${API_BASE_URL}/room/${roomId}/${userId}`, { score });
+      userService.updateUserInfo(userId, { total_score: user.total_score + score });
     } catch (error) {
       console.error("Error updating score:", error);
     }
