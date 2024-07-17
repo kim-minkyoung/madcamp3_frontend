@@ -40,13 +40,9 @@ const RoomPage: React.FC = () => {
   const [roomUsers, setRoomUsers] = useState<User[]>([]);
   const [scoring, setScoring] = useState<boolean>(false);
   const [score, setScore] = useState(0);
+  const [finished, setFinished] = useState(false);
 
-  useEffect(() => {
-    const filteredUsers = roomUsers.filter((user) => user.scores[0] === -1);
-    if (scoring && selectedUser === userId.current && filteredUsers.length === 0) {
-      handleEndGame();
-    }
-  }, [scoring, selectedUser, roomUsers]);
+
 
   useEffect(() => {
     const fetchOwner = async () => {
@@ -232,6 +228,7 @@ const RoomPage: React.FC = () => {
   const handleEndGame = async () => {
     if (webSocketRef.current?.readyState === WebSocket.OPEN) {
       setScoring(false);
+      roomService.closeRoom(parseInt(roomId));
       webSocketRef.current.send(
         JSON.stringify({
           action: "endGame",
@@ -433,11 +430,8 @@ const RoomPage: React.FC = () => {
 
         if (message.action === "endGame") {
           setScoring(false);
-          setTimeout(() => {
-            console.log("finished!");
-            setSelectedUser(null);
-          }, 3000);
-          Navigate('/main');
+          setSelectedUser(null);
+          setFinished(true);
         }
 
 
@@ -596,42 +590,46 @@ const RoomPage: React.FC = () => {
           ))}
         </ul>
         </div>
-
-        <div className="flex flex-col w-6/12 items-center justify-start">
-          {selectedUser === null ? (
-            <div className="flex items-center justify-center h-full">
-              {userId.current === ownerId ? (
-                <button
-                  className="p-4 text-white bg-blue-600 rounded"
-                  onClick={handleStart}
-                >
-                  방 시작
-                </button>
+        <>
+          {!finished ? (
+            <div className="flex flex-col w-6/12 items-center justify-start">
+              {selectedUser === null ? (
+                <div className="flex items-center justify-center h-full">
+                  {userId.current === ownerId ? (
+                    <button
+                      className="p-4 text-white bg-blue-600 rounded"
+                      onClick={handleStart}
+                    >
+                      방 시작
+                    </button>
+                  ) : (
+                    <div className="text-xl text-gray-700">곧 시작할 예정입니다.</div>
+                  )}
+                </div>
               ) : (
-                <div className="text-xl text-gray-700">곧 시작할 예정입니다.</div>
+                <div className="flex flex-col items-center">
+                  {selectedUser === userId.current ? (
+                    localStream && <RemoteVideo stream={localStream} />
+                  ) : (
+                    remoteStreams[selectedUser] && <RemoteVideo stream={remoteStreams[selectedUser]} />
+                  )}
+                  {(selectedUser === userId.current || userId.current === ownerId) && (
+                    <button
+                      className="p-4 mt-4 text-white bg-red-600 rounded"
+                      onClick={handleEnd}
+                    >
+                      🎤 자랑 끝내기 🎤
+                    </button>
+                  )}
+                </div>
               )}
             </div>
           ) : (
-            <div className="flex flex-col items-center">
-              {selectedUser === userId.current ? (
-                localStream ? (
-                  <RemoteVideo stream={localStream} />
-                ) : null
-              ) : (
-                remoteStreams[selectedUser] ? (
-                  <RemoteVideo stream={remoteStreams[selectedUser]} />
-                ) : null
-              )}
-              {(selectedUser === userId.current || userId.current === ownerId) && (
-                <button className="p-4 mt-4 text-white bg-red-600 rounded"
-                onClick={handleEnd}>
-                  🎤 자랑 끝내기 🎤
-                </button>
-              )}
+            <div className="flex flex-col w-6/12 items-center justify-start">
+              <div className="text-xl text-gray-700">방이 종료되었습니다.</div>
             </div>
           )}
-        </div>
-
+        </>
         <div className="flex flex-col w-3/12 ml-12">
         <div id="chat-container" className="flex-grow p-4 overflow-auto">
         {messages.map((message, index) => {
@@ -696,31 +694,45 @@ const RoomPage: React.FC = () => {
       {scoring && selectedUser === userId.current && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
           <div className="bg-white p-6 rounded shadow-lg">
-            <h2 className="text-2xl mb-4">사용자를 선택해주세요</h2>
-            <div className="grid grid-cols-1 gap-4">
-              {roomUsers
-                .filter((user) => user.scores[0] === -1 && selectedUser !== user.user_id)
-                .map((user) => (
-                  <div
-                    key={user.user_id}
-                    className="flex items-center p-2 border rounded cursor-pointer hover:bg-gray-100"
-                    onClick={() => handleSelectUser(user.user_id)} // 선택한 유저를 처리하는 함수
-                  >
-                    <img
-                      className="w-10 h-10 rounded-full"
-                      style={{ objectFit: "cover" }}
-                      src={
-                        user.user_image ||
-                        "https://previews.123rf.com/images/kurhan/kurhan1704/kurhan170400964/76701347-%ED%96%89%EB%B3%B5%ED%95%9C-%EC%82%AC%EB%9E%8C-%EC%96%BC%EA%B5%B4.jpg"
-                      }
-                      alt={`${user.user_name} image`}
-                    />
-                    <span className="ml-4 text-sm font-medium text-gray-900">
-                      {user.user_name}
-                    </span>
-                  </div>
-                ))}
-            </div>
+            {roomUsers.filter(user => user.scores[0] === -1 && selectedUser !== user.user_id).length === 0 ? (
+              <div>
+                <h2 className="text-2xl mb-4">방이 종료되었습니다.</h2>
+                <button
+                  className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+                  onClick={handleEndGame} // 게임 끝내기 함수
+                >
+                  게임 끝내기
+                </button>
+              </div>
+            ) : (
+              <div>
+                <h2 className="text-2xl mb-4">사용자를 선택해주세요</h2>
+                <div className="grid grid-cols-1 gap-4">
+                  {roomUsers
+                    .filter(user => user.scores[0] === -1 && selectedUser !== user.user_id)
+                    .map(user => (
+                      <div
+                        key={user.user_id}
+                        className="flex items-center p-2 border rounded cursor-pointer hover:bg-gray-100"
+                        onClick={() => handleSelectUser(user.user_id)} // 선택한 유저를 처리하는 함수
+                      >
+                        <img
+                          className="w-10 h-10 rounded-full"
+                          style={{ objectFit: "cover" }}
+                          src={
+                            user.user_image ||
+                            "https://previews.123rf.com/images/kurhan/kurhan1704/kurhan170400964/76701347-%ED%96%89%EB%B3%B5%ED%95%9C-%EC%82%AC%EB%9E%8C-%EC%96%BC%EA%B5%B4.jpg"
+                          }
+                          alt={`${user.user_name} image`}
+                        />
+                        <span className="ml-4 text-sm font-medium text-gray-900">
+                          {user.user_name}
+                        </span>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
