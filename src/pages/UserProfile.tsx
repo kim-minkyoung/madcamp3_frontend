@@ -12,13 +12,14 @@ import {
 import UserService, { User } from "../services/UserService";
 import FriendService from "../services/FriendService";
 import Modal from "react-modal";
-import "../UserProfile.css"; // 추가된 CSS 파일 import
+import "../UserProfile.css";
+import { FaEdit, FaSave } from "react-icons/fa";
 
 Chart.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 const customStyles = {
   overlay: {
-    backgroundColor: "rgba(0, 0, 0, 0)", // 투명 배경
+    backgroundColor: "rgba(0, 0, 0, 0)", // Transparent overlay
     zIndex: 1000,
   },
   content: {
@@ -33,17 +34,6 @@ const customStyles = {
     maxWidth: "500px",
     width: "90%",
   },
-  closeButton: {
-    position: "absolute",
-    top: "10px",
-    right: "10px",
-    cursor: "pointer",
-    backgroundColor: "transparent",
-    border: "none",
-    outline: "none",
-    fontSize: "20px",
-    color: "#888",
-  },
 };
 
 const UserProfile: React.FC<{
@@ -56,12 +46,17 @@ const UserProfile: React.FC<{
   const [followers, setFollowers] = useState<User[]>([]);
   const [followings, setFollowings] = useState<User[]>([]);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
-  const [modalContent, setModalContent] = useState<string>("");
+  const [modalContent, setModalContent] = useState<"followers" | "followings">(
+    "followers"
+  );
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [chartData, setChartData] = useState<any>(null); // Initialize chartData state
+  const [isEditingBio, setIsEditingBio] = useState(false);
+  const [newBio, setNewBio] = useState(user.bio); // Initialize with current bio
+
   const userId = localStorage.getItem("userId") as string;
 
   useEffect(() => {
-    // Fetch initial followers and following counts
     const fetchFollowCounts = async () => {
       try {
         const followers = await FriendService.getFollowers(user.user_id);
@@ -70,7 +65,6 @@ const UserProfile: React.FC<{
           userId,
           user.user_id
         );
-        console.log(isFollowing);
         setIsFollowing(isFollowing);
         setFollowersCount(followers.length);
         setFollowingCount(followings.length);
@@ -82,15 +76,47 @@ const UserProfile: React.FC<{
     fetchFollowCounts();
   }, [user.user_id, userId]);
 
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const userData = await UserService.getUserInfo(user.user_id);
+        const scores = userData.scores || [];
+
+        // userData.scores 배열에서 각 객체의 category와 date 속성을 조합하여 labels 배열 생성
+        const labels = scores.map((scoreObj: any) => {
+          const date = new Date(scoreObj.date);
+          const formattedDate = `${date.getMonth() + 1}/${date.getDate()}`;
+          return `${scoreObj.category} (${formattedDate})`;
+        });
+
+        const data = {
+          labels: labels,
+          datasets: [
+            {
+              label: "Scores",
+              data: scores.map((scoreObj: any) => scoreObj.score),
+              backgroundColor: "rgba(75, 192, 192, 0.2)",
+              borderColor: "rgba(75, 192, 192, 1)",
+              borderWidth: 1,
+            },
+          ],
+        };
+        setChartData(data);
+      } catch (error) {
+        console.error("Error fetching user info:", error);
+      }
+    };
+
+    fetchUserData();
+  }, [userId, user.scores]);
+
   const handleFollowToggle = async () => {
     try {
       if (isFollowing) {
-        // Unfollow the user
         await FriendService.unfollowUser(userId, user.user_id);
         setIsFollowing(false);
         setFollowersCount((prev) => prev - 1);
       } else {
-        // Follow the user
         await FriendService.followUser(userId, user.user_id);
         setIsFollowing(true);
         setFollowersCount((prev) => prev + 1);
@@ -135,23 +161,9 @@ const UserProfile: React.FC<{
 
   const closeModal = () => {
     setIsModalOpen(false);
-    setSelectedUser(null); // 모달 닫을 때 선택된 사용자 정보 초기화
+    setSelectedUser(null);
   };
 
-  const data = {
-    labels: user.scores.map((score) => score.toString()),
-    datasets: [
-      {
-        label: "점수",
-        data: user.scores,
-        backgroundColor: "rgba(75, 192, 192, 0.2)",
-        borderColor: "rgba(75, 192, 192, 1)",
-        borderWidth: 1,
-      },
-    ],
-  };
-
-  // 카테고리별 점수 합산
   const categoryScores = {
     노래: 0,
     마술: 0,
@@ -171,12 +183,25 @@ const UserProfile: React.FC<{
     categoryScores[category] += score;
   });
 
+  const handleSaveBio = async () => {
+    try {
+      // Send request to update bio
+      const updatedUser = await UserService.updateUserInfo(userId, {
+        bio: newBio,
+      });
+
+      setNewBio(newBio);
+
+      setIsEditingBio(false); // Exit editing mode
+    } catch (error) {
+      console.error("Error updating bio:", error);
+    }
+  };
+
+  // Render only when chartData is not null or undefined
   return (
     <div className="p-6 bg-white rounded shadow-lg">
-      <div
-        className="flex items-center space-x-4"
-        style={{ width: "100%", height: "auto" }}
-      >
+      <div className="flex items-center space-x-4">
         <div
           style={{
             width: "4rem",
@@ -212,7 +237,45 @@ const UserProfile: React.FC<{
               팔로잉: {followingCount}
             </span>
           </div>
-          <div className="text-sm text-gray-700">{user.bio}</div>
+          <div className="flex">
+            <div className="text-sm text-gray-700">
+              <div className="text-sm text-gray-700">
+                {isEditingBio ? (
+                  <textarea
+                    value={newBio || ""}
+                    onChange={(e) => setNewBio(e.target.value)}
+                    rows={4}
+                    className="w-full p-2 border border-gray-300 rounded-md"
+                  />
+                ) : (
+                  <div>
+                    {localStorage.getItem("userId") === user.user_id
+                      ? newBio || user.bio
+                      : user.bio}
+                  </div>
+                )}
+              </div>
+            </div>
+            {localStorage.getItem("userId") === user.user_id && (
+              <div>
+                {isEditingBio ? (
+                  <button
+                    className="flex items-center px-2 text-gray-700"
+                    onClick={handleSaveBio}
+                  >
+                    <FaSave className="mr-2" />
+                  </button>
+                ) : (
+                  <button
+                    className="flex items-center px-2 text-gray-700 "
+                    onClick={() => setIsEditingBio(true)}
+                  >
+                    <FaEdit className="mr-2" />
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
         </div>
         {localStorage.getItem("userId") !== user.user_id && (
           <div>
@@ -236,13 +299,12 @@ const UserProfile: React.FC<{
       </div>
       <div className="">
         <h3 className="text-lg font-semibold text-gray-900">역대 점수 추이</h3>
-        <Bar
-          data={data}
-          options={{
-            responsive: true,
-            scales: { y: { beginAtZero: true } },
-          }}
-        />
+        {chartData && (
+          <Bar
+            data={chartData}
+            options={{ responsive: true, scales: { y: { beginAtZero: true } } }}
+          />
+        )}
       </div>
 
       <Modal
@@ -251,7 +313,6 @@ const UserProfile: React.FC<{
         style={customStyles}
       >
         <div style={{ display: "flex", justifyContent: "flex-end" }}>
-          {/* X 버튼을 오른쪽 위로 이동 */}
           <button
             style={{
               cursor: "pointer",
