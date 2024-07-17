@@ -772,7 +772,7 @@ const RoomPage: React.FC = () => {
               type="number"
               className="w-full px-3 py-2 mb-4 border rounded"
               placeholder="점수를 입력하세요"
-              onChange={(e) => setScore(e.target.value as any)}
+              onChange={(e) => setScore(parseInt(e.target.value))}
             />
             <button
               className="w-full p-2 text-white bg-blue-600 rounded"
