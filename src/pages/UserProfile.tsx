@@ -270,9 +270,9 @@ const UserProfile: React.FC<{
           />
         ) : (
           <>
-            <h2>
+            <h4>
               {modalContent === "followers" ? "팔로워 목록" : "팔로잉 목록"}
-            </h2>
+            </h4>
             <ul>
               {(modalContent === "followers" ? followers : followings).map(
                 (user) => (

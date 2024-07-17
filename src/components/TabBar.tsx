@@ -30,7 +30,7 @@ const TabBar: React.FC<TabBarProps> = ({ tabs, activeTabId, onTabClick }) => {
                 key={index}
                 className={`${
                   rainbowColors[index % rainbowColors.length]
-                } mr-1`}
+                } mr-1 italic`}
               >
                 {char}
               </span>

@@ -5,7 +5,16 @@ import { useNavigate } from "react-router-dom";
 import { RoomService, Room } from "../../services/RoomService";
 import { create } from "domain";
 
-const categories = ['노래', '마술', '춤', '코미디', '성대모사', '악기', '자유', '기타'];
+const categories = [
+  "노래",
+  "마술",
+  "춤",
+  "코미디",
+  "성대모사",
+  "악기",
+  "자유",
+  "기타",
+];
 
 const CreateRoomPage: React.FC = () => {
   const [roomName, setRoomName] = useState("");
@@ -19,7 +28,7 @@ const CreateRoomPage: React.FC = () => {
     const newRoom = {
       title: roomName,
       subTitle: roomDescription,
-      rankMode: (roomRank === "true"),
+      rankMode: roomRank,
       category: roomCategory,
       ownerId: localStorage.getItem("userId") || "",
     };
@@ -33,70 +42,71 @@ const CreateRoomPage: React.FC = () => {
   };
 
   return (
-    <div className="max-w-md mx-auto p-6 bg-white rounded-lg shadow-md">
-    <h2 className="text-2xl font-bold mb-6">방 생성</h2>
-    <form
+    <div className="max-w-md p-6 mx-auto bg-white rounded-lg shadow-md">
+      <h2 className="mb-6 text-2xl font-bold">방 생성</h2>
+      <form
         onSubmit={(e) => {
-        e.preventDefault();
-        handleCreateRoom();
+          e.preventDefault();
+          handleCreateRoom();
         }}
-    >
+      >
         <div className="mb-4">
-        <label className="block text-gray-700 font-bold mb-2">방 제목:</label>
-        <input
+          <label className="block mb-2 font-bold text-gray-700">방 제목:</label>
+          <input
             type="text"
             value={roomName}
             onChange={(e) => setRoomName(e.target.value)}
             required
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
+          />
         </div>
         <div className="mb-4">
-        <label className="block text-gray-700 font-bold mb-2">방 설명:</label>
-        <input
+          <label className="block mb-2 font-bold text-gray-700">방 설명:</label>
+          <input
             type="text"
             value={roomDescription}
             onChange={(e) => setRoomDescription(e.target.value)}
             required
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
+          />
         </div>
         <div className="mb-4">
-        <label className="block text-gray-700 font-bold mb-2">랭크:</label>
-        <select
+          <label className="block mb-2 font-bold text-gray-700">모드:</label>
+          <select
             value={roomRank}
             onChange={(e) => setRoomRank(e.target.value)}
             required
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-            <option value="true">랭크</option>
-            <option value="false">일반</option>
-        </select>
+          >
+            <option value="true">랭크 모드</option>
+            <option value="false">일반 모드</option>
+          </select>
         </div>
         <div className="mb-4">
-        <label className="block text-gray-700 font-bold mb-2">카테고리:</label>
-        <select
+          <label className="block mb-2 font-bold text-gray-700">
+            카테고리:
+          </label>
+          <select
             value={roomCategory}
             onChange={(e) => setRoomCategory(e.target.value)}
             required
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
+          >
             {categories.map((category) => (
-            <option key={category} value={category}>
+              <option key={category} value={category}>
                 {category}
-            </option>
+              </option>
             ))}
-        </select>
+          </select>
         </div>
         <button
-        type="submit"
-        className="w-full bg-blue-500 text-white font-bold py-2 px-4 rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          type="submit"
+          className="w-full px-4 py-2 font-bold text-white bg-blue-500 rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
-        방 생성
+          방 생성
         </button>
-    </form>
+      </form>
     </div>
-
   );
 };
 

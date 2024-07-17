@@ -42,8 +42,6 @@ const RoomPage: React.FC = () => {
   const [score, setScore] = useState(0);
   const [finished, setFinished] = useState(false);
 
-
-
   useEffect(() => {
     const fetchOwner = async () => {
       const room = await roomService.getRoomById(parseInt(roomId));
@@ -105,7 +103,7 @@ const RoomPage: React.FC = () => {
       );
     }
   };
-  
+
   const handleEnd = async () => {
     if (webSocketRef.current?.readyState === WebSocket.OPEN) {
       webSocketRef.current.send(
@@ -116,7 +114,7 @@ const RoomPage: React.FC = () => {
         })
       );
     }
-  }
+  };
 
   const handleSelectUser = (userId: string) => {
     setScoring(false);
@@ -127,7 +125,7 @@ const RoomPage: React.FC = () => {
         targetId: userId,
       })
     );
-  }
+  };
 
   const handleSubmitScore = async () => {
     if (selectedUser && score) {
@@ -209,14 +207,17 @@ const RoomPage: React.FC = () => {
   const handleSetRoom = useCallback(async () => {
     try {
       const usersInRoom = await roomService.getAllUsersInRoom(parseInt(roomId));
-      
+
       const usersWithScores = await Promise.all(
         usersInRoom.map(async (user) => {
-          const score = await roomService.getUserScoreInRoom(parseInt(roomId), user.user_id);
+          const score = await roomService.getUserScoreInRoom(
+            parseInt(roomId),
+            user.user_id
+          );
           return { ...user, scores: [score] };
         })
       );
-  
+
       setRoomUsers(usersWithScores);
       return usersWithScores;
     } catch (error) {
@@ -237,7 +238,7 @@ const RoomPage: React.FC = () => {
         })
       );
     }
-  }
+  };
 
   useEffect(() => {
     const init = async () => {
@@ -350,7 +351,10 @@ const RoomPage: React.FC = () => {
           message.userId !== userId.current &&
           message.roomId === roomId
         ) {
-          handleChatMessage({ sender: message.userId, text: message.message.text });
+          handleChatMessage({
+            sender: message.userId,
+            text: message.message.text,
+          });
         }
 
         if (message.action === "offer" && message.userId !== userId.current) {
@@ -433,9 +437,6 @@ const RoomPage: React.FC = () => {
           setSelectedUser(null);
           setFinished(true);
         }
-
-
-
       } catch (error) {
         console.error("Error parsing JSON:", error);
       }
@@ -557,42 +558,44 @@ const RoomPage: React.FC = () => {
     >
       <div style={{ display: "flex", flexDirection: "row", height: "70vh" }}>
         <div className="w-3/12 overflow-y-auto mr-14">
-        <ul role="list" className="divide-y">
-          {roomUsers.map((user) => (
-            <li key={user.user_id} className="py-3 sm:py-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <img
-                    className="w-10 h-10 rounded-full"
-                    style={{ objectFit: "cover" }}
-                    src={
-                      user.user_image ||
-                      "https://previews.123rf.com/images/kurhan/kurhan1704/kurhan170400964/76701347-%ED%96%89%EB%B3%B5%ED%95%9C-%EC%82%AC%EB%9E%8C-%EC%96%BC%EA%B5%B4.jpg"
-                    }
-                    alt={`${user.user_name} image`}
-                  />
-                  <div className="grid grid-rows-2 gap-y-1">
-                    <span className="text-sm font-medium text-gray-900">
-                      {user.user_name}
-                    </span>
-                    {user.user_id === selectedUser && (
-                      <span className="text-xs font-medium text-red-500">on_air</span>
-                    )}
-                    {(user.scores[0] !== -1 && user.scores[0] !== 101) && (
-                      <span className="text-xs font-medium text-gray-700">
-                        {user.scores[0]}점
+          <ul role="list" className="divide-y">
+            {roomUsers.map((user) => (
+              <li key={user.user_id} className="py-3 sm:py-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                    <img
+                      className="w-10 h-10 rounded-full"
+                      style={{ objectFit: "cover" }}
+                      src={
+                        user.user_image ||
+                        "https://previews.123rf.com/images/kurhan/kurhan1704/kurhan170400964/76701347-%ED%96%89%EB%B3%B5%ED%95%9C-%EC%82%AC%EB%9E%8C-%EC%96%BC%EA%B5%B4.jpg"
+                      }
+                      alt={`${user.user_name} image`}
+                    />
+                    <div className="grid grid-rows-2 gap-y-1">
+                      <span className="text-sm font-medium text-gray-900">
+                        {user.user_name}
                       </span>
-                    )}
+                      {user.user_id === selectedUser && (
+                        <span className="text-xs font-medium text-red-500">
+                          on_air
+                        </span>
+                      )}
+                      {user.scores[0] !== -1 && user.scores[0] !== 101 && (
+                        <span className="text-xs font-medium text-gray-700">
+                          {user.scores[0]}점
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            </li>
-          ))}
-        </ul>
+              </li>
+            ))}
+          </ul>
         </div>
         <>
           {!finished ? (
-            <div className="flex flex-col w-6/12 items-center justify-start">
+            <div className="flex flex-col items-center justify-start w-6/12">
               {selectedUser === null ? (
                 <div className="flex items-center justify-center h-full">
                   {userId.current === ownerId ? (
@@ -603,17 +606,20 @@ const RoomPage: React.FC = () => {
                       방 시작
                     </button>
                   ) : (
-                    <div className="text-xl text-gray-700">곧 시작할 예정입니다.</div>
+                    <div className="text-xl text-gray-700">
+                      곧 시작할 예정입니다.
+                    </div>
                   )}
                 </div>
               ) : (
                 <div className="flex flex-col items-center">
-                  {selectedUser === userId.current ? (
-                    localStream && <RemoteVideo stream={localStream} />
-                  ) : (
-                    remoteStreams[selectedUser] && <RemoteVideo stream={remoteStreams[selectedUser]} />
-                  )}
-                  {(selectedUser === userId.current || userId.current === ownerId) && (
+                  {selectedUser === userId.current
+                    ? localStream && <RemoteVideo stream={localStream} />
+                    : remoteStreams[selectedUser] && (
+                        <RemoteVideo stream={remoteStreams[selectedUser]} />
+                      )}
+                  {(selectedUser === userId.current ||
+                    userId.current === ownerId) && (
                     <button
                       className="p-4 mt-4 text-white bg-red-600 rounded"
                       onClick={handleEnd}
@@ -625,44 +631,62 @@ const RoomPage: React.FC = () => {
               )}
             </div>
           ) : (
-            <div className="flex flex-col w-6/12 items-center justify-start">
+            <div className="flex flex-col items-center justify-start w-6/12">
               <div className="text-xl text-gray-700">방이 종료되었습니다.</div>
             </div>
           )}
         </>
         <div className="flex flex-col w-3/12 ml-12">
-        <div id="chat-container" className="flex-grow p-4 overflow-auto">
-        {messages.map((message, index) => {
-          const user = roomUsers.find((user) => user.user_id === message.sender) as User;
-          return (
-            <div
-              key={index}
-              className={`flex ${message.sender === userId.current ? "justify-end" : "justify-start"} mb-4`}
-            >
-              {message.sender !== userId.current && (
-                <img
-                  src={user.user_image || "https://previews.123rf.com/images/kurhan/kurhan1704/kurhan170400964/76701347-%ED%96%89%EB%B3%B5%ED%95%9C-%EC%82%AC%EB%9E%8C-%EC%96%BC%EA%B5%B4.jpg"}
-                  className="object-cover w-8 h-8 rounded-full"
-                  alt={user.user_name || "User"}
-                />
-              )}
-              <div
-                className={`mx-2 py-2 px-3 rounded-3xl text-white ${message.sender === userId.current ? "bg-blue-400" : "bg-gray-400"} ml-2`}
-              >
-                <p className="font-bold">{user.user_name || "Unknown User"}</p>
-                <p>{message.text}</p>
-              </div>
-              {message.sender === userId.current && (
-                <img
-                  src={user.user_image || "https://previews.123rf.com/images/kurhan/kurhan1704/kurhan170400964/76701347-%ED%96%89%EB%B3%B5%ED%95%9C-%EC%82%AC%EB%9E%8C-%EC%96%BC%EA%B5%B4.jpg"}
-                  className="object-cover w-8 h-8 rounded-full"
-                  alt={user.user_name || "User"}
-                />
-              )}
-            </div>
-          );
-        })}
-      </div>
+          <div id="chat-container" className="flex-grow p-4 overflow-auto">
+            {messages.map((message, index) => {
+              const user = roomUsers.find(
+                (user) => user.user_id === message.sender
+              ) as User;
+              return (
+                <div
+                  key={index}
+                  className={`flex ${
+                    message.sender === userId.current
+                      ? "justify-end"
+                      : "justify-start"
+                  } mb-4`}
+                >
+                  {message.sender !== userId.current && (
+                    <img
+                      src={
+                        user.user_image ||
+                        "https://previews.123rf.com/images/kurhan/kurhan1704/kurhan170400964/76701347-%ED%96%89%EB%B3%B5%ED%95%9C-%EC%82%AC%EB%9E%8C-%EC%96%BC%EA%B5%B4.jpg"
+                      }
+                      className="object-cover w-8 h-8 rounded-full"
+                      alt={user.user_name || "User"}
+                    />
+                  )}
+                  <div
+                    className={`mx-2 py-2 px-3 rounded-3xl text-white ${
+                      message.sender === userId.current
+                        ? "bg-blue-400"
+                        : "bg-gray-400"
+                    } ml-2`}
+                  >
+                    <p className="font-bold">
+                      {user.user_name || "Unknown User"}
+                    </p>
+                    <p>{message.text}</p>
+                  </div>
+                  {message.sender === userId.current && (
+                    <img
+                      src={
+                        user.user_image ||
+                        "https://previews.123rf.com/images/kurhan/kurhan1704/kurhan170400964/76701347-%ED%96%89%EB%B3%B5%ED%95%9C-%EC%82%AC%EB%9E%8C-%EC%96%BC%EA%B5%B4.jpg"
+                      }
+                      className="object-cover w-8 h-8 rounded-full"
+                      alt={user.user_name || "User"}
+                    />
+                  )}
+                </div>
+              );
+            })}
+          </div>
           <div className="p-4 bg-gray-300">
             <input
               className="w-full px-3 py-2 rounded-xl"
@@ -693,12 +717,14 @@ const RoomPage: React.FC = () => {
 
       {scoring && selectedUser === userId.current && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white p-6 rounded shadow-lg">
-            {roomUsers.filter(user => user.scores[0] === -1 && selectedUser !== user.user_id).length === 0 ? (
+          <div className="p-6 bg-white rounded shadow-lg">
+            {roomUsers.filter(
+              (user) => user.scores[0] === -1 && selectedUser !== user.user_id
+            ).length === 0 ? (
               <div>
-                <h2 className="text-2xl mb-4">방이 종료되었습니다.</h2>
+                <h2 className="mb-4 text-2xl">방이 종료되었습니다.</h2>
                 <button
-                  className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+                  className="px-4 py-2 text-white bg-red-500 rounded hover:bg-red-600"
                   onClick={handleEndGame} // 게임 끝내기 함수
                 >
                   게임 끝내기
@@ -706,11 +732,14 @@ const RoomPage: React.FC = () => {
               </div>
             ) : (
               <div>
-                <h2 className="text-2xl mb-4">사용자를 선택해주세요</h2>
+                <h2 className="mb-4 text-2xl">사용자를 선택해주세요</h2>
                 <div className="grid grid-cols-1 gap-4">
                   {roomUsers
-                    .filter(user => user.scores[0] === -1 && selectedUser !== user.user_id)
-                    .map(user => (
+                    .filter(
+                      (user) =>
+                        user.scores[0] === -1 && selectedUser !== user.user_id
+                    )
+                    .map((user) => (
                       <div
                         key={user.user_id}
                         className="flex items-center p-2 border rounded cursor-pointer hover:bg-gray-100"
@@ -739,8 +768,8 @@ const RoomPage: React.FC = () => {
 
       {scoring && selectedUser !== userId.current && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white p-6 rounded shadow-lg">
-            <h2 className="text-2xl mb-4">점수를 매겨주세요</h2>
+          <div className="p-6 bg-white rounded shadow-lg">
+            <h2 className="mb-4 text-2xl">점수를 매겨주세요</h2>
             <input
               type="number"
               className="w-full px-3 py-2 mb-4 border rounded"
@@ -757,8 +786,6 @@ const RoomPage: React.FC = () => {
         </div>
       )}
     </div>
-
-
   );
 };
 
@@ -781,6 +808,5 @@ const RemoteVideo: React.FC<{ stream: MediaStream }> = ({ stream }) => {
     />
   );
 };
-
 
 export default RoomPage;
