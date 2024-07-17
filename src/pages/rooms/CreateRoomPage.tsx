@@ -19,7 +19,7 @@ const categories = [
 const CreateRoomPage: React.FC = () => {
   const [roomName, setRoomName] = useState("");
   const [roomDescription, setRoomDescription] = useState("");
-  const [roomRank, setRoomRank] = useState("");
+  const [roomRank, setRoomRank] = useState("1");
   const [roomCategory, setRoomCategory] = useState(categories[0]);
   const navigate = useNavigate();
 
@@ -34,8 +34,9 @@ const CreateRoomPage: React.FC = () => {
     };
 
     try {
-      const createdRoomId = await roomService.createRoom(newRoom);
-      navigate(`/room/${createdRoomId}`);
+      console.log("Sending room data to server:", newRoom);
+      await roomService.createRoom(newRoom);
+      navigate(`/main`);
     } catch (error) {
       console.error("Failed to create room:", error);
     }
@@ -78,8 +79,8 @@ const CreateRoomPage: React.FC = () => {
             required
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            <option value="true">랭크 모드</option>
-            <option value="false">일반 모드</option>
+            <option value="1">랭크 모드</option>
+            <option value="0">일반 모드</option>
           </select>
         </div>
         <div className="mb-4">

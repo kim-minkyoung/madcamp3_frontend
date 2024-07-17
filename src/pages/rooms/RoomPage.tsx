@@ -132,6 +132,7 @@ const RoomPage: React.FC = () => {
   const handleSubmitScore = async () => {
     if (selectedUser && score) {
       await roomService.updateScore(parseInt(roomId), selectedUser, score);
+      console.log("Score submitted:", score);
       const updatedRoomUsers = await handleSetRoom();
       setRoomUsers(updatedRoomUsers);
       setScoring(false);
@@ -429,6 +430,7 @@ const RoomPage: React.FC = () => {
 
         if (message.action === "start") {
           setSelectedUser(message.targetId);
+          await handleSetRoom();
         }
 
         if (message.action === "end") {
@@ -439,6 +441,7 @@ const RoomPage: React.FC = () => {
           setScoring(false);
           setSelectedUser(null);
           setFinished(true);
+          await handleSetRoom();
         }
       } catch (error) {
         console.error("Error parsing JSON:", error);
@@ -640,56 +643,48 @@ const RoomPage: React.FC = () => {
           )}
         </>
         <div className="flex flex-col w-3/12 ml-12">
-          <div id="chat-container" className="flex-grow p-4 overflow-auto">
-            {messages.map((message, index) => {
-              const user = roomUsers.find(
-                (user) => user.user_id === message.sender
-              ) as User;
-              return (
+        <div id="chat-container" className="flex-grow p-4 overflow-auto">
+          {messages.map((message, index) => {
+            const user = roomUsers.find(
+              (user) => user.user_id === message.sender
+            ) as User;
+
+            const userName = user ? user.user_name : "Unknown User";
+            const userImage = user
+              ? user.user_image : null;
+            return (
+              <div
+                key={index}
+                className={`flex ${
+                  message.sender === userId.current ? "justify-end" : "justify-start"
+                } mb-4`}
+              >
+                {message.sender !== userId.current && (
+                  <img
+                    src={userImage? userImage : "https://previews.123rf.com/images/kurhan/kurhan1704/kurhan170400964/76701347-%ED%96%89%EB%B3%B5%ED%95%9C-%EC%82%AC%EB%9E%8C-%EC%96%BC%EA%B5%B4.jpg"}
+                    className="object-cover w-8 h-8 rounded-full"
+                    alt={userName}
+                  />
+                )}
                 <div
-                  key={index}
-                  className={`flex ${
-                    message.sender === userId.current
-                      ? "justify-end"
-                      : "justify-start"
-                  } mb-4`}
+                  className={`mx-2 py-2 px-3 rounded-3xl text-white ${
+                    message.sender === userId.current ? "bg-blue-400" : "bg-gray-400"
+                  } ml-2`}
                 >
-                  {message.sender !== userId.current && (
-                    <img
-                      src={
-                        user.user_image ||
-                        "https://previews.123rf.com/images/kurhan/kurhan1704/kurhan170400964/76701347-%ED%96%89%EB%B3%B5%ED%95%9C-%EC%82%AC%EB%9E%8C-%EC%96%BC%EA%B5%B4.jpg"
-                      }
-                      className="object-cover w-8 h-8 rounded-full"
-                      alt={user.user_name || "User"}
-                    />
-                  )}
-                  <div
-                    className={`mx-2 py-2 px-3 rounded-3xl text-white ${
-                      message.sender === userId.current
-                        ? "bg-blue-400"
-                        : "bg-gray-400"
-                    } ml-2`}
-                  >
-                    <p className="font-bold">
-                      {user.user_name || "Unknown User"}
-                    </p>
-                    <p>{message.text}</p>
-                  </div>
-                  {message.sender === userId.current && (
-                    <img
-                      src={
-                        user.user_image ||
-                        "https://previews.123rf.com/images/kurhan/kurhan1704/kurhan170400964/76701347-%ED%96%89%EB%B3%B5%ED%95%9C-%EC%82%AC%EB%9E%8C-%EC%96%BC%EA%B5%B4.jpg"
-                      }
-                      className="object-cover w-8 h-8 rounded-full"
-                      alt={user.user_name || "User"}
-                    />
-                  )}
+                  <p className="font-bold">{userName}</p>
+                  <p>{message.text}</p>
                 </div>
-              );
-            })}
-          </div>
+                {message.sender === userId.current && (
+                  <img
+                    src={userImage? userImage : "https://previews.123rf.com/images/kurhan/kurhan1704/kurhan170400964/76701347-%ED%96%89%EB%B3%B5%ED%95%9C-%EC%82%AC%EB%9E%8C-%EC%96%BC%EA%B5%B4.jpg"}
+                    className="object-cover w-8 h-8 rounded-full"
+                    alt={userName}
+                  />
+                )}
+              </div>
+            );
+          })}
+        </div>
           <div className="p-4 bg-gray-300">
             <input
               className="w-full px-3 py-2 rounded-xl"
